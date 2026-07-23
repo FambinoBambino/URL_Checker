@@ -1,0 +1,47 @@
+my-extension/
+├── manifest.json
+
+├── src/
+│   ├── background/
+│   │   └── background.js
+│   │
+│   ├── content/
+│   │   ├── index.js
+│   │   └── helpers.js
+│   │
+│   ├── popup/
+│   │   ├── popup.html
+│   │   ├── popup.js
+│   │   └── popup.css
+│   │
+│   ├── options/
+│   │   ├── options.html
+│   │   ├── options.js
+│   │   └── options.css
+│   │
+│   ├── common/
+│   │   ├── constants.js
+│   │   ├── storage.js
+│   │   └── messaging.js
+│   │
+│   └── utils/
+│       └── dom.js
+
+├── assets/
+│   ├── icons/
+│   │   ├── icon-16.png
+│   │   ├── icon-32.png
+│   │   ├── icon-48.png
+│   │   └── icon-128.png
+│   └── images/
+│       └── logo.svg
+
+├── _locales/
+│   └── en/
+│       └── messages.json
+
+├── build/                 # Generated (gitignored)
+│   └── firefox/
+
+├── web-ext-config.js      # Optional: web-ext tooling
+└── README.md

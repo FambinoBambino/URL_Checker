@@ -1,0 +1,118 @@
+<!-- /* AI-Review complete */ -->
+
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>My Extension — Settings</title>
+    <link rel="stylesheet" href="options.css">
+</head>
+
+<body>
+    <div class="options-container">
+        <h1 class="options-title">Extension Settings</h1>
+
+        <!-- ── Extension enabled toggle ── -->
+        <!-- <div class="setting-group">
+            <label class="toggle-label" for="toggle-enabled">
+                <span class="label-text">Enable extension</span>
+                <input type="checkbox" id="toggle-enabled" class="toggle-input">
+                <span class="toggle-slider"></span>
+            </label>
+            <p class="setting-description">
+                When disabled, the content script will not run on pages.
+            </p>
+        </div> -->
+
+        <!-- ── Accessibility Themes toggle ── -->
+        <!-- <div class="setting-group">
+            <label class="toggle-label" for="toggle-accessibility">
+                <span class="label-text">Accessible Themes (High Contrast)</span>
+                <input type="checkbox" id="toggle-accessibility" class="toggle-input">
+                <span class="toggle-slider"></span>
+            </label>
+            <p class="setting-description">
+                Replaces the standard light/dark modes with alternative color palettes designed for maximum contrast and colorblind friendliness.
+            </p>
+        </div> -->
+
+        <!-- ── Context menu mode setting ──
+             This controls how the right-click "Save URL to folder…" item behaves.
+             Two options:
+               • Simple:  one menu item → opens the picker popup
+               • Submenu: parent menu expands into child items for quick folder selection -->
+        <div class="setting-group">
+            <span class="label-text">Context menu style</span>
+            <p class="setting-description">
+                Choose how the right-click "Save URL to folder…" menu works.
+            </p>
+
+            <!-- Radio buttons let the user pick exactly one option from a group.
+                 All radios in the same group share the same "name" attribute.
+                 When one radio is checked, the browser automatically unchecks the others. -->
+            <div class="radio-group">
+                <label class="radio-label" for="mode-simple">
+                    <input type="radio" id="mode-simple" name="contextMenuMode" value="simple" class="radio-input"
+                        checked>
+                    <span class="radio-custom"></span>
+                    <div class="radio-content">
+                        <span class="radio-title">Simple</span>
+                        <span class="radio-desc">Click to open a folder picker popup</span>
+                    </div>
+                </label>
+
+                <label class="radio-label" for="mode-submenu">
+                    <input type="radio" id="mode-submenu" name="contextMenuMode" value="submenu" class="radio-input">
+                    <span class="radio-custom"></span>
+                    <div class="radio-content">
+                        <span class="radio-title">Submenu</span>
+                        <span class="radio-desc">Hover to see folders directly in the context menu</span>
+                    </div>
+                </label>
+            </div>
+        </div>
+
+        <!-- ── VirusTotal API Key ── -->
+        <div class="setting-group">
+            <label for="virustotal-api-key" class="field-label">VirusTotal API Key</label>
+            <div class="input-wrapper">
+                <input type="password" id="virustotal-api-key" class="text-input" placeholder="Enter your VirusTotal API key">
+                <button type="button" id="btn-toggle-api-key" class="btn-toggle-visibility" title="Toggle visibility">
+                    <!-- Eye (Show) Icon -->
+                    <svg class="icon-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                        <circle cx="12" cy="12" r="3"></circle>
+                    </svg>
+                    <!-- Eye Off (Hide) Icon -->
+                    <svg class="icon-eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;">
+                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                        <line x1="1" y1="1" x2="23" y2="23"></line>
+                    </svg>
+                </button>
+            </div>
+            <p class="setting-description">
+                Required for analyzing URLs. You can obtain a free API key from the <a href="https://www.virustotal.com/" target="_blank" rel="noopener noreferrer">VirusTotal community portal</a>.
+            </p>
+        </div>
+
+        <!-- ── Saved URL (read-only) ── -->
+        <div class="setting-group">
+            <label for="saved-url" class="field-label">Saved URL</label>
+            <input type="text" id="saved-url" class="text-input" placeholder="No URL saved yet" readonly>
+            <p class="setting-description">
+                This is the last URL saved from the popup. Read-only here; save new URLs from the popup.
+            </p>
+        </div>
+
+        <div class="actions">
+            <button id="btn-save" class="btn btn-primary">Save Settings</button>
+            <span id="save-status" class="save-status"></span>
+        </div>
+    </div>
+
+    <script src="options.js"></script>
+</body>
+
+</html>
