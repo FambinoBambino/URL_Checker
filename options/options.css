@@ -1,0 +1,332 @@
+/* AI-Review complete */
+
+/* ===== Reset & Base ===== */
+*,
+*::before,
+*::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    /* font-family: "Segoe UI", system-ui, -apple-system, sans-serif; */
+    background: #121220;
+    color: #e0e0e0;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 60px 20px;
+}
+
+/* ===== Container ===== */
+.options-container {
+    width: 100%;
+    max-width: 520px;
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+}
+
+/* ===== Title ===== */
+.options-title {
+    font-size: 26px;
+    font-weight: 700;
+    background: white;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+/* ===== Setting groups ===== */
+.setting-group {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.setting-description {
+    font-size: 12px;
+    color: white;
+    line-height: 1.5;
+}
+
+/* ===== Toggle switch ===== */
+.toggle-label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+}
+
+.label-text {
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.toggle-input {
+    /* Hide the native checkbox — we draw a custom slider instead */
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-slider {
+    width: 44px;
+    height: 24px;
+    background: #333;
+    border-radius: 12px;
+    position: relative;
+    transition: background 0.25s ease;
+}
+
+.toggle-slider::after {
+    content: "";
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 18px;
+    height: 18px;
+    background: #888;
+    border-radius: 50%;
+    transition: transform 0.25s ease, background 0.25s ease;
+}
+
+/* When the hidden checkbox is checked, style the slider differently */
+.toggle-input:checked+.toggle-slider {
+    background: #6c63ff;
+}
+
+.toggle-input:checked+.toggle-slider::after {
+    transform: translateX(20px);
+    background: #fff;
+}
+
+/* ===== Radio buttons (context menu mode) =====
+   We hide the native <input type="radio"> and draw a custom circle
+   indicator, similar to how the toggle switch hides the native checkbox.
+
+   The structure for each radio option is:
+     <label class="radio-label">
+       <input type="radio" class="radio-input">  ← hidden
+       <span class="radio-custom"></span>          ← the visible circle
+       <div class="radio-content">
+         <span class="radio-title">...</span>
+         <span class="radio-desc">...</span>
+       </div>
+     </label>
+*/
+.radio-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.radio-label {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.radio-label:hover {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+/* Hide the native radio button */
+.radio-input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+/* Custom radio circle indicator */
+.radio-custom {
+    width: 18px;
+    height: 18px;
+    border: 2px solid #555;
+    border-radius: 50%;
+    flex-shrink: 0;
+    position: relative;
+    transition: border-color 0.15s ease;
+}
+
+/* Inner dot — appears when the radio is selected.
+   We use the ::after pseudo-element as a small filled circle inside
+   the outer ring. It starts with scale(0) (invisible) and scales
+   up to scale(1) when selected. */
+.radio-custom::after {
+    content: "";
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 8px;
+    height: 8px;
+    background: #6c63ff;
+    border-radius: 50%;
+    transform: scale(0);
+    transition: transform 0.15s ease;
+}
+
+/* When the hidden radio is checked, style the custom indicator */
+.radio-input:checked~.radio-custom {
+    border-color: #6c63ff;
+}
+
+.radio-input:checked~.radio-custom::after {
+    transform: scale(1);
+}
+
+/* Highlight the entire label when selected */
+.radio-input:checked~.radio-content .radio-title {
+    color: #fff;
+}
+
+.radio-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.radio-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #ccc;
+    transition: color 0.15s ease;
+}
+
+.radio-desc {
+    font-size: 11px;
+    color: #777;
+}
+
+/* ===== Text input ===== */
+.field-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #aaa;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.text-input {
+    width: 100%;
+    padding: 10px 14px;
+    font-size: 14px;
+    color: #ccc;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    outline: none;
+    transition: border-color 0.2s ease;
+}
+
+.text-input:focus {
+    border-color: #6c63ff;
+}
+
+/* ===== Input Wrapper with Icon ===== */
+.input-wrapper {
+    position: relative;
+    width: 100%;
+    display: flex;
+    align-items: center;
+}
+
+.input-wrapper .text-input {
+    padding-right: 44px; /* Space for the toggle visibility button */
+}
+
+.btn-toggle-visibility {
+    position: absolute;
+    right: 8px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: #888;
+    padding: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.btn-toggle-visibility:hover {
+    color: #fff;
+    background-color: rgba(255, 255, 255, 0.08);
+}
+
+.btn-toggle-visibility svg {
+    width: 18px;
+    height: 18px;
+}
+
+/* Toggle visibility icon states controlled by wrapper class */
+.input-wrapper.show-password .icon-eye {
+    display: none !important;
+}
+
+.input-wrapper.show-password .icon-eye-off {
+    display: block !important;
+}
+
+/* Links inside setting descriptions */
+.setting-description a {
+    color: #6c63ff;
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.15s ease;
+}
+
+.setting-description a:hover {
+    color: #8c85ff;
+    text-decoration: underline;
+}
+
+/* ===== Buttons ===== */
+.actions {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.btn {
+    padding: 10px 24px;
+    font-size: 14px;
+    font-weight: 600;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+
+.btn:active {
+    transform: translateY(0);
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #6c63ff, #5a54e0);
+    color: #fff;
+}
+
+/* ===== Save status ===== */
+.save-status {
+    font-size: 13px;
+    color: #3fc1c9;
+}

@@ -1,0 +1,141 @@
+<!-- AI-Review complete -->
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" href="popup.css" />
+</head>
+
+<body>
+    <!-- ===== Top Bar =====
+       The top bar is a horizontal strip across the top of the popup.
+       It's split into three sections using flexbox:
+         1. Left:   tab buttons (Folders, Image)
+         2. Middle: search bar (only visible on the Folders tab)
+         3. Right:  utility buttons (theme toggle, help, settings)
+  -->
+    <header class="top-bar">
+        <nav class="tab-buttons">
+            <button class="tab-btn active" data-tab="folders">
+                <img src="../icons/folder/tabler--folder-16.png" alt="">
+                Folders
+            </button>
+
+            <!-- For now, the 2nd button will share the same image as above button, will replace later -->
+            <button class="tab-btn" data-tab="url_check">
+                <img src="../icons/extension-icon/tabler--virus-search-16.png" alt="">
+                URL Check
+            </button>
+        </nav>
+
+        <!-- Middle: search bar
+         The search bar lets the user search stored URLs.
+         It's wrapped in a div so we can flex-grow it to fill available space.
+         "type=search" tells the browser this is a search field (shows a clear "×" button). -->
+        <div class="search-wrapper">
+            <i class="search-icon" style="background-image: url('../icons/search/tabler--search-16.png');"></i>
+            <input type="search" id="search-input" class="search-input" placeholder="Search URLs…" autocomplete="off" />
+
+            <!-- Search results dropdown — hidden by default, positioned below the search bar.
+           Results are populated by popup.js when the user types in the search input. -->
+            <div id="search-results" class="search-results hidden"></div>
+        </div>
+
+        <!-- Right side: utility buttons
+         Order in HTML (left→right): theme toggle, help, settings
+         This places settings closest to the right edge. -->
+        <div class="utility-buttons">
+            <button id="btn-theme" class="util-btn" title="Toggle light/dark mode">
+                <!-- Moon icon (shown in dark mode; JS swaps to sun in light mode) -->
+                <img id="icon-moon" src="../icons/toggle/tabler--moon-32.png" class="util-icon hidden">
+                <!-- Sun icon (hidden by default; shown in light mode) -->
+                <img id="icon-sun" src="../icons/toggle/tabler--sun-32.png" class="util-icon hidden">
+            </button>
+
+            <button id="btn-help" class="util-btn" title="Help">
+                <img src="../icons/help/tabler--help-32.png" class="util-icon">
+            </button>
+
+            <button id="btn-settings" class="util-btn" title="Settings">
+                <img src="../icons/settings/tabler--settings-32.png" class="util-icon">
+            </button>
+        </div>
+    </header>
+
+    <!-- ===== Content Area =====
+       This area fills all remaining space below the top bar.
+       It holds the content for whichever tab is currently active.
+       Only one tab panel is visible at a time (JS toggles them). -->
+    <div class="content-area">
+
+        <!-- ── Folders Tab Panel ──
+         Split into two columns:
+           Left:  sidebar with folder list + "New Folder" button
+           Right: main panel showing the selected folder's URLs -->
+        <section id="panel-folders" class="tab-panel active">
+            <!-- Sidebar -->
+            <aside class="sidebar">
+                <!-- "General" folder — always pinned at the top, not deletable.
+             It shows a combined view of ALL URLs across every folder. -->
+                <button class="folder-item general-folder active" data-folder-id="__general__">
+                    General
+                </button>
+
+                <!-- Scrollable list of user-created folders (populated by JS) -->
+                <div id="folder-sidebar-list" class="folder-sidebar-list"></div>
+
+                <!-- "New Folder" creation area.
+             Contains a text input that appears when the user clicks the "+" button.
+             The input is hidden by default and shown via JS. -->
+                <div class="new-folder-area">
+                    <input type="text" id="new-folder-input" class="new-folder-input hidden" placeholder="Folder name…"
+                        maxlength="50" />
+                    <button id="btn-new-folder" class="btn-new-folder" title="Create new folder">
+                        <!-- Plus icon -->
+                        <img src="../icons/plus/ic--round-plus-32.png" class="new-folder-icon" alt="">
+                        New Folder
+                    </button>
+                </div>
+            </aside>
+
+            <!-- Main panel — shows the selected folder's name and URLs -->
+            <div class="main-panel">
+                <h2 id="folder-heading" class="folder-heading">General</h2>
+                <div id="url-list" class="url-list">
+                    <!-- URL items will be rendered here by JS -->
+                    <p id="empty-folder-msg" class="empty-folder-msg">
+                        No URLs saved yet.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ── Single Use Scan URL Tab Panel ──
+         Placeholder panel (hot pink background, as before) -->
+        <!-- <section id="panel-image" class="tab-panel">
+                <div class="image-placeholder"></div>
+            </section> -->
+
+
+
+        <section id="panel-URL-Check" class="tab-panel">
+            <div class="panel-center">
+                <input type="text" id="single-use-url-check" class="single-use-url-check active"
+                    placeholder="Enter your URL here for single time uses..." />
+                <button id="btn-submit-url-check" class="btn-submit-url-check active" title="Scan URL">
+                    Scan URL
+                </button>
+            </div>
+        </section>
+
+
+
+
+    </div>
+
+    <!-- MV3 requires all JS in external files — no inline scripts allowed -->
+    <script src="popup.js"></script>
+</body>
+
+</html>

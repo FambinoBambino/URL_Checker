@@ -1,0 +1,46 @@
+<!-- /* AI-Review complete */ --> 
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Save URL to Folder</title>
+    <link rel="stylesheet" href="picker.css">
+</head>
+
+<body>
+    <div class="picker-container">
+        <h1 class="picker-title">Choose a folder</h1>
+
+        <!-- The URL being saved, shown for confirmation -->
+        <p id="url-preview" class="url-preview">Loading…</p>
+
+        <!-- Search input for filtering folders when there are many -->
+        <input type="search" id="picker-search" class="picker-search" placeholder="Filter folders…"
+            autocomplete="off" />
+
+        <!-- Button to create a new folder on the fly -->
+        <button id="btn-new-folder" class="btn-new-folder">
+            <span class="icon">➕</span>
+            <span class="text">New Folder</span>
+        </button>
+
+        <!-- List of folders — populated by picker.js -->
+        <div id="folder-list" class="folder-list"></div>
+
+        <!-- Fallback message when no folders exist yet -->
+        <p id="no-folders" class="no-folders hidden">
+            No folders yet. Create one in the extension popup first.
+        </p>
+
+        <!-- Cancel button -->
+        <button id="btn-cancel" class="btn btn-cancel">Cancel</button>
+    </div>
+
+    <!-- Load shared palettes first -->
+    <!-- <script src="../shared/themes.js"></script> -->
+    <script src="picker.js"></script>
+</body>
+
+</html>

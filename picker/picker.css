@@ -1,0 +1,215 @@
+/* <!-- AI-Review complete --> */ 
+/* Contains mismtach of dark/light mode but that is UI so, it can be fixed after release */
+
+/* ===== Reset & Base ===== */
+*,
+*::before,
+*::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    /* ── Default theme variables ── */
+    --bg-body: #1a1a2e;
+    --text-primary: #e0e0e0;
+    --text-muted: #888;
+    --text-url: #7b9fce;
+    --folder-active-bg: rgba(108, 99, 255, 0.15);
+    --folder-active-border: #6c63ff;
+    --input-bg: rgba(255, 255, 255, 0.06);
+    --input-border: rgba(255, 255, 255, 0.1);
+    --input-focus-border: #6c63ff;
+    --url-item-bg: rgba(255, 255, 255, 0.03);
+    --url-item-border: rgba(255, 255, 255, 0.06);
+    --delete-red: #e74c3c;
+
+    background: var(--bg-body);
+    color: var(--text-primary);
+    /* Let the page fill the popup window */
+    min-height: 100vh;
+}
+
+/* ===== Container ===== */
+.picker-container {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+/* ===== Title ===== */
+.picker-title {
+    font-size: 18px;
+    font-weight: 700;
+    background: linear-gradient(135deg, #6c63ff, #3fc1c9);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+/* ===== URL preview ===== */
+.url-preview {
+    font-size: 12px;
+    color: var(--text-muted);
+    word-break: break-all;
+    padding: 8px 10px;
+    background: var(--url-item-bg);
+    border-radius: 6px;
+    border: 1px solid var(--url-item-border);
+    /* Limit height and make scrollable for very long URLs */
+    max-height: 60px;
+    overflow-y: auto;
+}
+
+/* ===== Search input ===== */
+.picker-search {
+    width: 100%;
+    padding: 8px 12px;
+    font-size: 13px;
+    color: var(--text-primary);
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
+    border-radius: 6px;
+    outline: none;
+    transition: border-color 0.2s ease;
+}
+
+.picker-search::placeholder {
+    color: var(--text-muted);
+}
+
+.picker-search:focus {
+    border-color: var(--input-focus-border);
+}
+
+/* ===== New Folder Button ===== */
+.btn-new-folder {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background: var(--folder-active-bg);
+    border: 1px dashed var(--folder-active-border);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
+    /* Margin to separate it from the search input */
+    margin-top: 4px;
+}
+
+.btn-new-folder:hover {
+    background: rgba(108, 99, 255, 0.2);
+    border-style: solid;
+}
+
+.btn-new-folder .icon {
+    font-size: 14px;
+}
+
+/* ===== Folder list ===== */
+.folder-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    /* Scrollable if many folders */
+    max-height: 220px;
+    overflow-y: auto;
+}
+
+/* Each folder button in the picker */
+.folder-pick-btn {
+    padding: 10px 14px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    background: var(--url-item-bg);
+    border: 1px solid var(--url-item-border);
+    border-radius: 8px;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.15s ease, border-color 0.15s ease;
+
+    /* Truncate long folder names with "…" */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.folder-pick-btn:hover {
+    background: var(--folder-active-bg);
+    border-color: var(--folder-active-border);
+}
+
+/* ===== No-folders message ===== */
+.no-folders {
+    font-size: 13px;
+    color: var(--text-muted);
+    text-align: center;
+    padding: 20px 0;
+}
+
+/* ===== Cancel button ===== */
+.btn-cancel {
+    padding: 10px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+    background: var(--url-item-bg);
+    border: 1px solid var(--url-item-border);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.btn-cancel:hover {
+    background: rgba(255, 255, 255, 0.12);
+}
+
+/* ===== Utility ===== */
+.hidden {
+    display: none;
+}
+
+/* ==========================================================================
+   LIGHT MODE OVERRIDES
+   When body gets the .light-mode class, we manually invert some structural
+   colours that aren't driven fully by the palette CSS vars (like shadows).
+   ========================================================================== */
+/* body.light-mode {
+    color: var(--text-primary);
+}
+
+body.light-mode .folder-pick-btn {
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+body.light-mode .folder-pick-btn:hover {
+    border-color: var(--folder-active-border);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+body.light-mode .btn-cancel {
+    background: #e2e2ea;
+    color: var(--text-primary);
+}
+
+body.light-mode .btn-cancel:hover {
+    background: #d1d1db;
+}
+
+body.light-mode .btn-new-folder {
+    border: 1px dashed rgba(0, 0, 0, 0.2);
+}
+
+body.light-mode .btn-new-folder:hover {
+    border-color: var(--folder-active-border);
+    color: var(--folder-active-border);
+    background: var(--folder-active-bg);
+} */
