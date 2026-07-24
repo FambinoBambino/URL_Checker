@@ -663,10 +663,26 @@ btnNewFolder.addEventListener("click", () => {
 // ── New folder input: create folder on Enter key ────────────────────
 // The "keydown" event fires every time a key is pressed while the input
 // is focused. We check if the pressed key is "Enter" to trigger creation.
+
+// Here is where we want to add a check for duplicate folder names. 
+// Before calling createFolder(name), we can check if a folder with the same name already exists in folderData.folders. 
+// If it does, we can alert the user and not create the folder.
+
+// For the error message, we can use alert() to show a simple popup message <- More intrusive as user needs to manually close it.
+// or we can replace the placeholder text in the input field with an error message.
+
+
+
 newFolderInput.addEventListener("keydown", async (e) => {
   if (e.key === "Enter") {
     const name = newFolderInput.value;
-    if (name.trim()) {
+
+    if ( folderData.folders.some((f) => f.name.toLowerCase() === name.trim().toLowerCase()) ) {
+      // If a folder with the same name already exists, show an error message
+      alert(`A folder named "${name.trim()}" already exists. Please choose a different name.`);
+      return; // Don't create the folder
+    }
+    else if (name.trim()) {
       await createFolder(name);
       newFolderInput.value = ""; // Clear the input
       newFolderInput.classList.add("hidden"); // Hide it again
