@@ -128,12 +128,12 @@ async function buildContextMenu() {
         // 2. Create the "General" child item (always first).
         //    parentId links it under the parent item we just created.
         //    In sub-menus, items appear in the ORDER they are created.
-        menusAPI.create({
-            id: "save-to-general",
-            parentId: "save-url-parent",
-            title: "📥 General",
-            contexts: ["page", "link"],
-        });
+        // menusAPI.create({
+        //     id: "save-to-general",
+        //     parentId: "save-url-parent",
+        //     title: "📥 General",
+        //     contexts: ["page", "link"],
+        // });
 
         // 3. Create child items for up to 8 user-created folders.
         //    Array.slice(0, 8) returns a new array with at most the first 8 elements.
@@ -175,8 +175,11 @@ async function buildContextMenu() {
         });
 
         console.log(
-            `[background] Submenu built: General + ${displayedFolders.length} folders + Search`
+            `[background] Submenu built: ${displayedFolders.length} folders + Search`
         );
+        // console.log(
+        //     `[background] Submenu built: General + ${displayedFolders.length} folders + Search`
+        // );
     } else {
         // ── SIMPLE MODE (default) ───────────────────────────────────
         // One flat menu item that opens the picker popup.
@@ -243,11 +246,11 @@ if (menusAPI) {
         // ── "General" → save to ALL folders ──
         // When the user clicks "General", we add the URL to every folder.
         // This mirrors the popup's General folder behaviour (union of all).
-        if (info.menuItemId === "save-to-general") {
-            console.log("[background] Saving to General (all folders):", urlToSave);
-            saveUrlToAllFolders(urlToSave);
-            return;
-        }
+        // if (info.menuItemId === "save-to-general") {
+        //     console.log("[background] Saving to General (all folders):", urlToSave);
+        //     saveUrlToAllFolders(urlToSave);
+        //     return;
+        // }
 
         // ── Specific folder → save directly ──
         // The menu item IDs for individual folders are formatted as
@@ -349,36 +352,37 @@ async function saveUrlToFolder(folderId, url) {
  * Loops through every folder and adds the URL if not already present.
  * This mirrors the popup's General folder concept.
  *
- * @param {string} url — The URL to save
+ * The URL to save
  */
-async function saveUrlToAllFolders(url) {
-    try {
-        const { folderData } = await browser.storage.local.get("folderData");
-        const folders = folderData?.folders || [];
+// @param {string} url — The URL to save
+// async function saveUrlToAllFolders(url) {
+//     try {
+//         const { folderData } = await browser.storage.local.get("folderData");
+//         const folders = folderData?.folders || [];
 
-        if (folders.length === 0) {
-            console.warn("[background] No folders exist. URL not saved.");
-            return;
-        }
+//         if (folders.length === 0) {
+//             console.warn("[background] No folders exist. URL not saved.");
+//             return;
+//         }
 
-        let saved = false;
-        folders.forEach((folder) => {
-            if (!folder.urls.includes(url)) {
-                folder.urls.push(url);
-                saved = true;
-            }
-        });
+//         let saved = false;
+//         folders.forEach((folder) => {
+//             if (!folder.urls.includes(url)) {
+//                 folder.urls.push(url);
+//                 saved = true;
+//             }
+//         });
 
-        if (saved) {
-            await browser.storage.local.set({ folderData });
-            console.log("[background] URL saved to all folders.");
-        } else {
-            console.log("[background] URL already in all folders.");
-        }
-    } catch (err) {
-        console.error("[background] Failed to save URL to all folders:", err);
-    }
-}
+//         if (saved) {
+//             await browser.storage.local.set({ folderData });
+//             console.log("[background] URL saved to all folders.");
+//         } else {
+//             console.log("[background] URL already in all folders.");
+//         }
+//     } catch (err) {
+//         console.error("[background] Failed to save URL to all folders:", err);
+//     }
+// }
 
 /* ==========================================================================
    LISTENERS

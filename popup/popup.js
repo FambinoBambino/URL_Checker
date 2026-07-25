@@ -42,7 +42,7 @@ const iconSun = document.getElementById("icon-sun");
 const btnHelp = document.getElementById("btn-help");
 const btnSettings = document.getElementById("btn-settings");
 const folderSidebarList = document.getElementById("folder-sidebar-list");
-const generalFolderBtn = document.querySelector(".general-folder");
+// const generalFolderBtn = document.querySelector(".general-folder");
 const newFolderInput = document.getElementById("new-folder-input");
 const btnNewFolder = document.getElementById("btn-new-folder");
 const folderHeading = document.getElementById("folder-heading");
@@ -58,7 +58,11 @@ const emptyFolderMsg = document.getElementById("empty-folder-msg");
 
 // The currently selected folder ID. "__general__" is a special value
 // meaning the virtual General folder (union of all URLs).
-let activeFolderId = "__general__";
+// let activeFolderId = "__general__";
+let activeFolderId = null;
+// I can likely get rid of the general folder and set activeFolder to null for first time users.
+// Then, when they create a new folder, it will auto select that folder as active and of course we can implement persistent 
+// storage for the last active folder so that when the user opens the popup again, it will open to the last active folder. 
 
 // The full folder data object loaded from storage.
 // This is kept in sync with storage via loadFolderData() and saveFolderData().
@@ -195,7 +199,7 @@ function renderSidebar() {
   // Update the "active" state on the General folder button.
   // classList.toggle(class, force) adds the class if force is true,
   // removes it if force is false.
-  generalFolderBtn.classList.toggle("active", activeFolderId === "__general__"); // Might need to add re-store for active folder so that it persists across popup opens
+  // generalFolderBtn.classList.toggle("active", activeFolderId === "__general__"); // Might need to add re-store for active folder so that it persists across popup opens
 
   // Create a button for each user-created folder
   folderData.folders.forEach((folder) => {
@@ -309,6 +313,7 @@ async function createFolder(name) {
 async function deleteFolder(folderId) {
   // Find the folder to get its name for the confirmation message
   const folder = folderData.folders.find((f) => f.id === folderId);
+  const folderIndex = folderData.folders.findIndex((f) => f.id === folderId);
   if (!folder) return;
 
   // ── Confirmation dialogue ──
@@ -327,9 +332,31 @@ async function deleteFolder(folderId) {
   await saveFolderData();
 
   // If the deleted folder was the one being viewed, fall back to General
-  if (activeFolderId === folderId) {
-    activeFolderId = "__general__";
+  // I should change this to select the next folder if possible, else the previous one. If no folder exists, 
+  // then change text to the right to say something like "No folders exist"
+  // if (activeFolderId === folderId) {
+  //   activeFolderId = "__general__";
+  // }
+  // if (activeFolderId === folderId && folder. ) {
+
+  // }
+  if (folderData.folders.at(folderIndex)) {
+    activeFolderId = folderData.folders.at(folderIndex).id;
+  } else if (folderData.folders.at(folderIndex - 1)) {
+    activeFolderId = folderData.folders.at(folderIndex - 1).id;
+  } else {
+    activeFolderId = null; // No folders left
   }
+
+
+  // const newFolder = {
+  //   id: "f-" + Date.now(), // Unique ID
+  //   name: trimmedName,
+  //   urls: [], // Starts with no URLs
+  // };
+
+  // // Array.push() adds the new folder to the END of the array
+  // folderData.folders.push(newFolder);
 
   renderSidebar();
   renderUrlList();
@@ -356,39 +383,55 @@ function renderUrlList() {
   urlListEl.innerHTML = "";
 
   let urls = [];
-  let headingText = "General";
+  // let headingText = "General";
+  let headingText = "";
 
-  if (activeFolderId === "__general__") {
-    // ── General folder: union of all URLs ──
-    // We use a Set to collect unique URLs, then convert back to an array.
-    //
-    // How this works step by step:
-    //   1. Create an empty Set
-    //   2. Loop through every folder, and for each URL in that folder,
-    //      call urlSet.add(url) — duplicates are ignored automatically
-    //   3. Spread the Set back into an array with [...urlSet]
-    //      (the ... "spread operator" unpacks an iterable into individual values)
-    const urlSet = new Set();
-    folderData.folders.forEach((folder) => {
-      folder.urls.forEach((url) => urlSet.add(url));
-    });
-    urls = [...urlSet];
-    headingText = "General";
-  } else {
-    // ── Specific folder: find it and show its URLs ──
-    // Array.find() searches for the first matching element
-    const folder = folderData.folders.find((f) => f.id === activeFolderId);
-    if (folder) {
-      urls = folder.urls;
-      headingText = folder.name;
-    }
+  // ── Specific folder: find it and show its URLs ──
+  // Array.find() searches for the first matching element
+  const folder = folderData.folders.find((f) => f.id === activeFolderId);
+  if (folder) {
+    urls = folder.urls;
+    headingText = folder.name;
   }
+
+  // if (activeFolderId === "__general__") {
+  //   // ── General folder: union of all URLs ──
+  //   // We use a Set to collect unique URLs, then convert back to an array.
+  //   //
+  //   // How this works step by step:
+  //   //   1. Create an empty Set
+  //   //   2. Loop through every folder, and for each URL in that folder,
+  //   //      call urlSet.add(url) — duplicates are ignored automatically
+  //   //   3. Spread the Set back into an array with [...urlSet]
+  //   //      (the ... "spread operator" unpacks an iterable into individual values)
+  //   const urlSet = new Set();
+  //   folderData.folders.forEach((folder) => {
+  //     folder.urls.forEach((url) => urlSet.add(url));
+  //   });
+  //   urls = [...urlSet];
+  //   headingText = "General";
+  // } else {
+  //   // ── Specific folder: find it and show its URLs ──
+  //   // Array.find() searches for the first matching element
+  //   const folder = folderData.folders.find((f) => f.id === activeFolderId);
+  //   if (folder) {
+  //     urls = folder.urls;
+  //     headingText = folder.name;
+  //   }
+  // }
 
   // Update the heading at the top of the main panel
   folderHeading.textContent = headingText;
 
   // If there are no URLs, show the empty message
-  if (urls.length === 0) {
+  if (folderData.folders.length === 0) {
+    const msg = document.createElement("p");
+    msg.className = "empty-folder-msg";
+    msg.textContent = "No folders created yet.";
+    urlListEl.appendChild(msg);
+    return;
+  }
+  else if (urls.length === 0) {
     const msg = document.createElement("p");
     msg.className = "empty-folder-msg";
     msg.textContent = "No URLs saved yet.";
@@ -445,18 +488,25 @@ function renderUrlList() {
  * @param {string} url — The URL string to remove
  */
 async function deleteUrlFromFolder(url) {
-  if (activeFolderId === "__general__") {
-    // Remove from ALL folders
-    folderData.folders.forEach((folder) => {
-      folder.urls = folder.urls.filter((u) => u !== url);
-    });
-  } else {
+
     // Remove from the specific active folder only
     const folder = folderData.folders.find((f) => f.id === activeFolderId);
     if (folder) {
       folder.urls = folder.urls.filter((u) => u !== url);
     }
-  }
+
+  // if (activeFolderId === "__general__") {
+  //   // Remove from ALL folders
+  //   folderData.folders.forEach((folder) => {
+  //     folder.urls = folder.urls.filter((u) => u !== url);
+  //   });
+  // } else {
+  //   // Remove from the specific active folder only
+  //   const folder = folderData.folders.find((f) => f.id === activeFolderId);
+  //   if (folder) {
+  //     folder.urls = folder.urls.filter((u) => u !== url);
+  //   }
+  // }
 
   await saveFolderData();
   renderUrlList();
@@ -641,9 +691,9 @@ tabButtons.forEach((btn) => {
 });
 
 // ── General folder click ────────────────────────────────────────────
-generalFolderBtn.addEventListener("click", () => {
-  selectFolder("__general__");
-});
+// generalFolderBtn.addEventListener("click", () => {
+//   selectFolder("__general__");
+// });
 
 // ── "New Folder" button ─────────────────────────────────────────────
 // First click: show the text input so the user can type a folder name.
