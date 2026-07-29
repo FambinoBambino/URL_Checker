@@ -471,8 +471,8 @@ body {
     align-items: center;
     gap: 16px;
     width: 100%;
-    max-width: 420px;
-    padding: 30px;
+    max-width: 440px;
+    padding: 24px;
     box-sizing: border-box;
     background: rgba(0, 0, 0, 0.02);
     border: 1px solid rgba(0, 0, 0, 0.08);
@@ -482,6 +482,13 @@ body {
 .dark-mode .panel-center {
     background: rgba(255, 255, 255, 0.03);
     border-color: rgba(255, 255, 255, 0.08);
+}
+
+.input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
 }
 
 .single-use-url-check {
@@ -530,3 +537,143 @@ body {
 .btn-submit-url-check:active {
     transform: scale(0.98);
 }
+
+/* ── Result Card ── */
+.scan-result-card {
+    width: 100%;
+    border-radius: 8px;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    background-color: #ffffff;
+    box-sizing: border-box;
+    padding: 14px 16px;
+    transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.dark-mode .scan-result-card {
+    background-color: #141414;
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+.scan-result-card.default {
+    border-style: dashed;
+}
+
+/* Verdict Colors */
+.scan-result-card.verdict-green {
+    border-color: #2ecc71;
+    border-style: solid;
+    background-color: rgba(46, 204, 113, 0.06);
+}
+
+.scan-result-card.verdict-yellow {
+    border-color: #f39c12;
+    border-style: solid;
+    background-color: rgba(243, 156, 18, 0.06);
+}
+
+.scan-result-card.verdict-red {
+    border-color: #e74c3c;
+    border-style: solid;
+    background-color: rgba(231, 76, 60, 0.06);
+}
+
+.scan-result-main {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.scan-result-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.scan-result-status {
+    font-size: 13px;
+    font-weight: 600;
+    color: #444;
+}
+
+.dark-mode .scan-result-status {
+    color: #ddd;
+}
+
+.verdict-badge {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+}
+
+.verdict-badge.green { background-color: #2ecc71; }
+.verdict-badge.yellow { background-color: #f39c12; }
+.verdict-badge.red { background-color: #e74c3c; }
+
+/* Open in VirusTotal Button */
+.btn-open-vt {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px;
+    border-radius: 6px;
+    color: #666;
+    text-decoration: none;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.dark-mode .btn-open-vt {
+    color: #aaa;
+}
+
+.btn-open-vt:hover {
+    background: rgba(108, 99, 255, 0.15);
+    color: #6c63ff;
+}
+
+.vt-external-icon {
+    display: block;
+}
+
+/* Hover breakdown details */
+.scan-result-card:hover .scan-result-details:not(.hidden) {
+    display: flex;
+}
+
+.scan-result-details {
+    display: none;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.dark-mode .scan-result-details {
+    border-top-color: rgba(255, 255, 255, 0.08);
+}
+
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: #666;
+}
+
+.dark-mode .detail-row {
+    color: #aaa;
+}
+
+.detail-label {
+    font-weight: 500;
+}
+
+.stat-val {
+    font-weight: 600;
+}
+
+.stat-val.malicious { color: #e74c3c; }
+.stat-val.suspicious { color: #f39c12; }
+.stat-val.harmless { color: #2ecc71; }

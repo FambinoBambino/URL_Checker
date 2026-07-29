@@ -123,11 +123,42 @@
 
         <section id="panel-URL-Check" class="tab-panel">
             <div class="panel-center">
-                <input type="text" id="single-use-url-check" class="single-use-url-check active"
-                    placeholder="Enter your URL here for single time uses..." />
-                <button id="btn-submit-url-check" class="btn-submit-url-check active" title="Scan URL">
-                    Scan URL
-                </button>
+                <div class="input-group">
+                    <input type="text" id="single-use-url-check" class="single-use-url-check active"
+                        placeholder="Enter your URL here for single time uses..." />
+                    <button id="btn-submit-url-check" class="btn-submit-url-check active" title="Scan URL">
+                        Scan URL
+                    </button>
+                </div>
+
+                <!-- Result Box for URL Check -->
+                <div id="scan-result-card" class="scan-result-card default">
+                    <div class="scan-result-main">
+                        <div class="scan-result-info">
+                            <span id="scan-verdict-badge" class="verdict-badge hidden"></span>
+                            <span id="scan-result-status" class="scan-result-status">No URL scanned yet</span>
+                        </div>
+
+                        <!-- Open in VirusTotal button (external link icon) -->
+                        <a id="btn-open-vt" class="btn-open-vt hidden" href="#" target="_blank" rel="noopener noreferrer" title="Open new tab for more detailed VirusTotal results">
+                            <img src="../icons/settings/tabler--settings-32.png" class="vt-link-icon hidden" alt="">
+                            <svg class="vt-external-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                                <polyline points="15 3 21 3 21 9"></polyline>
+                                <line x1="10" y1="14" x2="21" y2="3"></line>
+                            </svg>
+                        </a>
+                    </div>
+
+                    <!-- Detailed Breakdown shown on hover when results exist -->
+                    <div id="scan-result-details" class="scan-result-details hidden">
+                        <div class="detail-row"><span class="detail-label">Malicious:</span> <span id="stat-malicious" class="stat-val malicious">0</span></div>
+                        <div class="detail-row"><span class="detail-label">Suspicious:</span> <span id="stat-suspicious" class="stat-val suspicious">0</span></div>
+                        <div class="detail-row"><span class="detail-label">Undetected:</span> <span id="stat-undetected" class="stat-val">0</span></div>
+                        <div class="detail-row"><span class="detail-label">Harmless:</span> <span id="stat-harmless" class="stat-val harmless">0</span></div>
+                        <div class="detail-row"><span class="detail-label">Timeout:</span> <span id="stat-timeout" class="stat-val">0</span></div>
+                    </div>
+                </div>
             </div>
         </section>
 
