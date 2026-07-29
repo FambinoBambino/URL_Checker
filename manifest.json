@@ -11,6 +11,9 @@
     "128": "icons/extension-icon/tabler--virus-search-128.png"
   },
   "permissions": ["storage", "menus"],
+  "host_permissions": [
+    "https://www.virustotal.com/*"
+  ],
   "optional_permissions": [
     "activeTab",
     "bookmarks",

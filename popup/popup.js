@@ -48,6 +48,7 @@ const btnNewFolder = document.getElementById("btn-new-folder");
 const folderHeading = document.getElementById("folder-heading");
 const urlListEl = document.getElementById("url-list");
 const emptyFolderMsg = document.getElementById("empty-folder-msg");
+const btnURL_Check = document.getElementById("btn-submit-url-check");
 
 /* ==========================================================================
    STATE
@@ -700,6 +701,7 @@ tabButtons.forEach((btn) => {
 // The folder is actually CREATED when the user presses Enter in the input.
 btnNewFolder.addEventListener("click", () => {
   // Toggle the hidden class on the input to show/hide it
+  // console.log("btnNewFolder clicked");
   newFolderInput.classList.toggle("hidden");
 
   // If the input is now visible, focus it so the user can start typing
@@ -709,6 +711,264 @@ btnNewFolder.addEventListener("click", () => {
     newFolderInput.focus();
   }
 });
+
+// For now, we do not do asyn since we just want to test the button, but once we add a function for 
+// retrieving result from VirusTotal API, we will need to make the function async and await the result.
+// btnURL_Check.addEventListener("click", () => {
+//   // const urlId = getBase64CachedUrlId("https://example.com/page");
+//   latestAnalysisJSON = checkCachedUrlReport("https://example.com/page");
+//   console.log(latestAnalysisJSON);
+//   // console.log("meow");
+//   // alert(`report id is ${latestAnalysisJSON.data.id}`);
+//   // alert(`Base64 URL ID for "https://example.com/page": ${urlId}`);
+//   // alert(await browser.storage.local.get("virusTotalApiKey"));
+// })
+// Mark listener as async so we can use await
+btnURL_Check.addEventListener("click", async () => {
+  try {
+    const latestAnalysisJSON = await checkCachedUrlReport("https://example.com/page");
+    console.log("Returned JSON:", latestAnalysisJSON);
+    console.log("Latest Analysis Date:", getLocalTime(latestAnalysisJSON.data.attributes.last_analysis_date));
+    getSecondsAgo(latestAnalysisJSON.data.attributes.last_analysis_date);
+
+    if (getHoursAgo(latestAnalysisJSON.data.attributes.last_analysis_date) < 12) {
+      alert(`The cached report is recent (less than 12 hours old). Last analysis was at ${getLocalTime(latestAnalysisJSON.data.attributes.last_analysis_date)}.`);
+    }
+    else {
+      alert(`The cached report is older than 12 hours. Last analysis was at ${getLocalTime(latestAnalysisJSON.data.attributes.last_analysis_date)}.`);
+    }
+
+
+  } catch (err) {
+    console.error("Failed to fetch report:", err);
+  }
+});
+
+// First thing I want to with button is get the result in terms of hours/days since the latest analysis.
+
+/**
+ * Converts any URL string into a VirusTotal v3 url_id.
+ * Used for the Scan URL endpoint: https://developers.virustotal.com/reference/scan-url
+ * Without the base64 encoding, the API will instead automatically re-analyze the URL, but we
+ * want to first check how long ago the cached result was generated and if it is too old, then we can re-analyze the URL.
+ * 
+ * @param {string} url - The web address (e.g., "https://example.com/page")
+ * @returns {string} The formatted url_id string required by VirusTotal
+ */
+function getBase64CachedUrlId(url) {
+  // Step 1: Convert the URL string to UTF-8 bytes (handles special characters safely)
+  const utf8Bytes = new TextEncoder().encode(url);
+  
+  // Step 2: Convert UTF-8 bytes into a binary string for btoa()
+  const binaryString = Array.from(utf8Bytes, (byte) => String.fromCharCode(byte)).join("");
+  
+  // Step 3: Convert to standard Base64 string
+  const base64 = btoa(binaryString);
+  
+  // Step 4: Make URL-safe (replace + with -, / with _, and remove = padding)
+  return base64
+    .replace(/=/g, "")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_");
+}
+
+function getLocalTime(unixTimestamp) {
+  // 1. Extract the raw Unix timestamp from the VirusTotal API response
+  // const unixTimestamp = response.data.attributes.date; // e.g. 1785116731
+
+  // 2. Convert seconds to milliseconds and pass to Date constructor
+  const dateObject = new Date(unixTimestamp * 1000);
+
+  // 3. Format as a readable local date and time string
+  const localTimeString = dateObject.toLocaleString();
+
+  // console.log(localTimeString); 
+  return localTimeString;
+  // Output on your device (e.g.): "7/26/2026, 6:45:31 PM" (in your local timezone)
+
+}
+
+function getSecondsAgo(unixTimestamp) {
+  // 1. Extract the raw Unix timestamp from the VirusTotal API response
+  // const unixTimestamp = response.data.attributes.date; // e.g. 1785116731
+  // const ms = Date.now() - unixTimestamp;
+  const currentSeconds = Math.floor(Date.now() / 1000);
+  const difference = currentSeconds - unixTimestamp;
+
+  console.log(`Difference in seconds: ${difference}`);
+  console.log(`Difference in minutes: ${Math.floor(difference / 60)}`);
+  console.log(`Difference in hours: ${Math.floor(difference / 3600)}`);
+  console.log(`Difference in days: ${Math.floor(difference / 86400)}`);
+}
+
+function getHoursAgo(unixTimestamp) {
+  // 1. Extract the raw Unix timestamp from the VirusTotal API response
+  // const unixTimestamp = response.data.attributes.date; // e.g. 1785116731
+  // const ms = Date.now() - unixTimestamp;
+  const currentSeconds = Math.floor(Date.now() / 1000);
+  const difference = currentSeconds - unixTimestamp;
+
+  console.log(`Difference in hours: ${Math.floor(difference / 3600)}`);
+  return Math.floor(difference / 3600);
+}
+
+//   // This example takes 2 seconds to run
+// const start = Date.now();
+// console.log(Date.now());
+
+// console.log("starting timer...");
+// // Expected output: "starting timer..."
+
+// setTimeout(() => {
+//   const ms = Date.now() - start;
+
+//   console.log(`seconds elapsed = ${Math.floor(ms / 1000)}`);
+//   // Expected output: "seconds elapsed = 2"
+// }, 2000);
+  // 2. Convert seconds to milliseconds and pass to Date constructor
+  // const dateObject = new Date(unixTimestamp * 1000);
+
+  // 3. Format as a readable local date and time string
+  // const localTimeString = dateObject.toLocaleString();
+
+  // console.log(localTimeString); 
+  // return localTimeString;
+  // Output on your device (e.g.): "7/26/2026, 6:45:31 PM" (in your local timezone)
+
+
+// async function checkUrlCache(targetUrl, apiKey) {
+//   // 1. Generate the VirusTotal URL ID
+//   const urlId = getVirusTotalUrlId(targetUrl);
+
+//   // 2. Call the GET /api/v3/urls/{id} endpoint
+//   const response = await fetch(`https://www.virustotal.com/api/v3/urls/${urlId}`, {
+//     method: "GET",
+//     headers: {
+//       "x-apikey": apiKey,
+//       "accept": "application/json"
+//     }
+//   });
+
+//   // 3. Handle response status
+//   if (response.status === 200) {
+//     const data = await response.json();
+//     console.log("Found cached report!", data);
+//     return data;
+//   } else if (response.status === 404) {
+//     console.log("URL not found in VirusTotal database. Needs a fresh scan.");
+//     return null; // Signals that you should call POST /urls to trigger a live scan
+//   } else {
+//     throw new Error(`VirusTotal API Error: ${response.status}`);
+//   }
+// }
+
+// function getCachedAnalysisID(targetUrl, apiKey) {
+//   const urlId = getBase64CachedUrlId(targetUrl);
+
+//   const options = {
+//     method: 'POST',
+//     headers: {
+//       'x-apikey': 'cdde9b4bba2526230859ac68dc6669534cd881f6823690efe36600b8ea1f51fc',
+//       accept: 'application/json',
+//       'content-type': 'application/x-www-form-urlencoded'
+//     },
+//     body: new URLSearchParams({url: targetUrl})
+//   };
+
+//   fetch('https://www.virustotal.com/api/v3/urls/${urlId}', options)
+//     .then(res => res.json())
+//     .then(res => console.log(res))
+//     .catch(err => console.error(err));
+// }
+
+
+async function checkCachedUrlReport(targetUrl) {
+  // This function actually uses the API for retrieving the cached analsysis, not just the ID.
+  const urlId = getBase64CachedUrlId(targetUrl);
+  console.log(`Checking cached report for URL: ${targetUrl} (ID: ${urlId})`);
+  // const apiKey = storage.getItem("virustotalApiKey"); // Retrieve the API key from storage
+  const apiKey = (await browser.storage.local.get("virusTotalApiKey")).virusTotalApiKey ?? "";
+  console.log(`Using VirusTotal API Key: ${apiKey}`);
+
+
+  // const options = {method: 'GET', headers: {accept: 'application/json', 'x-apikey': 'apiKey'}};
+  const options = {
+    method: "GET",
+    headers: {
+      "accept": "application/json",
+      "x-apikey": apiKey // Passed as variable, not 'apiKey' string
+    }
+  };
+
+  
+  return fetch(`https://www.virustotal.com/api/v3/urls/${urlId}`, options)
+    .then(res => {return res.json()})
+    .then(data => {console.log("Full JSON Output:\n" + JSON.stringify(data, null, 2));
+ return data;})
+    .catch(err => console.error(err));
+
+  // return res;
+}
+
+
+// // Modern Industry Standard Syntax
+// async function checkCachedUrlReport(targetUrl) {
+//   const urlId = getBase64CachedUrlId(targetUrl);
+//   const apiKey = (await browser.storage.local.get("virusTotalApiKey")).virusTotalApiKey ?? "";
+
+//   const options = {
+//     method: "GET",
+//     headers: {
+//       "accept": "application/json",
+//       "x-apikey": apiKey
+//     }
+//   };
+
+//   const response = await fetch(`https://www.virustotal.com/api/v3/urls/${urlId}`, options);
+//   const data = await response.json();
+
+//   console.log("Data inside checkCachedUrlReport:", data);
+//   return data; //  Return data to the caller!
+// }
+
+
+
+// async function checkCachedUrlReport(targetUrl) {
+
+//   // 4. Use BACKTICKS (`) for URL string interpolation
+//   const response = await fetch(`https://www.virustotal.com/api/v3/urls/${urlId}`, options);
+
+//   if (!response.ok) {
+//     throw new Error(`HTTP Error! Status: ${response.status}`);
+//   }
+
+//   // 5. Parse JSON data and return it to the caller
+//   const data = await response.json();
+//   return data;
+// }
+
+        // await browser.storage.local.set({
+        //     // extensionEnabled: toggleEnabled.checked,
+        //     // accessibleThemes: toggleAccess.checked,
+        //     contextMenuMode,
+        //     virusTotalApiKey
+        // });
+
+  // const options = {
+  //   method: 'POST',
+  //   headers: {
+  //     'x-apikey': 'cdde9b4bba2526230859ac68dc6669534cd881f6823690efe36600b8ea1f51fc',
+  //     accept: 'application/json',
+  //     'content-type': 'application/x-www-form-urlencoded'
+  //   },
+  //   body: new URLSearchParams({url: targetUrl})
+  // };
+
+  // fetch('https://www.virustotal.com/api/v3/urls/${urlId}', options)
+  //   .then(res => res.json())
+  //   .then(res => console.log(res))
+  //   .catch(err => console.error(err));
+
 
 // ── New folder input: create folder on Enter key ────────────────────
 // The "keydown" event fires every time a key is pressed while the input
