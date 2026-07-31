@@ -49,6 +49,21 @@ const folderHeading = document.getElementById("folder-heading");
 const urlListEl = document.getElementById("url-list");
 const emptyFolderMsg = document.getElementById("empty-folder-msg");
 const btnURL_Check = document.getElementById("btn-submit-url-check");
+const urlInput = document.getElementById("single-use-url-check");
+
+const scanResultCard = document.getElementById("scan-result-card");
+const scanVerdictBadge = document.getElementById("scan-verdict-badge"); // Initially hidden
+const scanResultStatus = document.getElementById("scan-result-status");
+const btnOpenVT = document.getElementById("btn-open-vt"); // Initially hidden
+const scanResultDetails = document.getElementById("scan-result-details"); // Initially hidden
+const statMalicious = document.getElementById("stat-malicious");
+const statSuspicious = document.getElementById("stat-suspicious");
+const statUndetected = document.getElementById("stat-undetected");
+const statHarmless = document.getElementById("stat-harmless");
+const statTimeout = document.getElementById("stat-timeout");
+//classList.add() or classList.remove() can be used to show/hide elements by toggling the "hidden" class.
+// textContent can be used to update the text inside an element, e.g., scanResultStatus.textContent = "New status text".
+// href can be used to set the URL for a link, e.g., btnOpenVT.href = "https://www.virustotal.com/gui/url/...";
 
 /* ==========================================================================
    STATE
@@ -726,16 +741,40 @@ btnNewFolder.addEventListener("click", () => {
 // Mark listener as async so we can use await
 btnURL_Check.addEventListener("click", async () => {
   try {
-    const latestAnalysisJSON = await checkCachedUrlReport("https://example.com/page");
+    const urlToCheck = urlInput.value.trim();
+    console.log("URL to check:", urlToCheck);
+    // const urlToCheck = "https://example.com/page";
+    const urlId = getBase64CachedUrlId(urlToCheck);
+    console.log("Base64 URL ID:", urlId);
+    
+    const latestAnalysisJSON = await checkCachedUrlReport(urlId);
     console.log("Returned JSON:", latestAnalysisJSON);
     console.log("Latest Analysis Date:", getLocalTime(latestAnalysisJSON.data.attributes.last_analysis_date));
     getSecondsAgo(latestAnalysisJSON.data.attributes.last_analysis_date);
 
     if (getHoursAgo(latestAnalysisJSON.data.attributes.last_analysis_date) < 12) {
-      alert(`The cached report is recent (less than 12 hours old). Last analysis was at ${getLocalTime(latestAnalysisJSON.data.attributes.last_analysis_date)}.`);
+      console.log(`The cached report is recent (less than 12 hours old). Last analysis was at ${getLocalTime(latestAnalysisJSON.data.attributes.last_analysis_date)}.`);
+      updateScanResultsUI( latestAnalysisJSON, urlId );
+      // statMalicious.textContent = latestAnalysisJSON.data.attributes.last_analysis_stats.malicious;
+      // statSuspicious.textContent = latestAnalysisJSON.data.attributes.last_analysis_stats.suspicious;
+      // statHarmless.textContent = latestAnalysisJSON.data.attributes.last_analysis_stats.harmless;
+      // statUndetected.textContent = latestAnalysisJSON.data.attributes.last_analysis_stats.undetected;
+      // statTimeout.textContent = latestAnalysisJSON.data.attributes.last_analysis_stats.timeout;
+
+      // console.log(`Malicious: ${latestAnalysisJSON.data.attributes.last_analysis_stats.malicious}`);
+      // console.log(`Suspicious:  ${latestAnalysisJSON.data.attributes.last_analysis_stats.suspicious}`);
+      // console.log(`Harmless:  ${latestAnalysisJSON.data.attributes.last_analysis_stats.harmless}`);
+      // console.log(`Undetected:  ${latestAnalysisJSON.data.attributes.last_analysis_stats.undetected}`);
     }
     else {
-      alert(`The cached report is older than 12 hours. Last analysis was at ${getLocalTime(latestAnalysisJSON.data.attributes.last_analysis_date)}.`);
+      console.log(`The cached report is older than 12 hours. Last analysis was at ${getLocalTime(latestAnalysisJSON.data.attributes.last_analysis_date)}.`);
+      const requestJSON = await requestURL_Rescan( urlId );
+      const recentJSON = await getRecentUrlReport( requestJSON.data.links.self );
+      updateScanResultsUI( recentJSON, urlId );
+      // console.log(`Malicious: ${latestAnalysisJSON.data.attributes.last_analysis_stats.malicious}`);
+      // console.log(`Suspicious:  ${latestAnalysisJSON.data.attributes.last_analysis_stats.suspicious}`);
+      // console.log(`Harmless:  ${latestAnalysisJSON.data.attributes.last_analysis_stats.harmless}`);
+      // console.log(`Undetected:  ${latestAnalysisJSON.data.attributes.last_analysis_stats.undetected}`);
     }
 
 
@@ -882,10 +921,10 @@ function getHoursAgo(unixTimestamp) {
 // }
 
 
-async function checkCachedUrlReport(targetUrl) {
+async function checkCachedUrlReport(urlId) {
   // This function actually uses the API for retrieving the cached analsysis, not just the ID.
-  const urlId = getBase64CachedUrlId(targetUrl);
-  console.log(`Checking cached report for URL: ${targetUrl} (ID: ${urlId})`);
+  // const urlId = getBase64CachedUrlId(targetUrl);
+  // console.log(`Checking cached report for URL: ${targetUrl} (ID: ${urlId})`);
   // const apiKey = storage.getItem("virustotalApiKey"); // Retrieve the API key from storage
   const apiKey = (await browser.storage.local.get("virusTotalApiKey")).virusTotalApiKey ?? "";
   console.log(`Using VirusTotal API Key: ${apiKey}`);
@@ -904,11 +943,178 @@ async function checkCachedUrlReport(targetUrl) {
   return fetch(`https://www.virustotal.com/api/v3/urls/${urlId}`, options)
     .then(res => {return res.json()})
     .then(data => {console.log("Full JSON Output:\n" + JSON.stringify(data, null, 2));
- return data;})
+  return data;})
     .catch(err => console.error(err));
 
   // return res;
 }
+
+async function requestURL_Rescan(urlId) {
+  const apiKey = (await browser.storage.local.get("virusTotalApiKey")).virusTotalApiKey ?? "";
+
+  const options = {
+    method: 'POST',
+    headers: {
+      accept: 'application/json',
+      'x-apikey': apiKey
+    }
+  };
+
+  return fetch(`https://www.virustotal.com/api/v3/urls/${urlId}/analyse`, options)
+    .then(res => {return res.json()})
+    .then(data => {console.log("Full JSON Output:\n" + JSON.stringify(data, null, 2));
+  return data;})
+    .catch(err => console.error(err));
+}
+
+async function getRecentUrlReport(urlToFetch) {
+  const apiKey = (await browser.storage.local.get("virusTotalApiKey")).virusTotalApiKey ?? "";
+
+  const options = {
+    method: "GET",
+    headers: {
+      accept: "application/json",
+      "x-apikey": apiKey
+    }
+  };
+
+  // --- Polling Configuration ---
+  // Maximum number of times we will ask VirusTotal "is the scan done yet?"
+  // before giving up to prevent an infinite loop.
+  const MAX_ATTEMPTS = 10;
+
+  // How long to wait (in milliseconds) between each poll attempt.
+  // The free API allows 4 requests/minute. Since 2 calls are already spent before
+  // polling starts (cache check + rescan trigger), only 2 slots remain per minute.
+  // 20000ms = 20 seconds keeps us safely within that budget.
+  const POLL_INTERVAL_MS = 20000;
+
+  // This helper wraps setTimeout in a Promise so we can use `await` to pause
+  // execution for POLL_INTERVAL_MS milliseconds before the next attempt.
+  // setTimeout on its own does not work with await, since it uses callbacks
+  // instead of Promises.
+  const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    console.log(`Polling analysis status... (Attempt ${attempt}/${MAX_ATTEMPTS})`);
+
+    const response = await fetch(urlToFetch, options);
+    const data = await response.json();
+
+    // data.attributes.status will be one of: "queued", "in-progress", or "completed"
+    const status = data?.data?.attributes?.status;
+    console.log(`Analysis status: ${status}`);
+
+    if (status === "completed") {
+      console.log("Analysis complete! Full JSON:\n" + JSON.stringify(data, null, 2));
+      return data;
+    }
+
+    // If not completed and we still have attempts remaining, wait before retrying
+    if (attempt < MAX_ATTEMPTS) {
+      console.log(`Scan not ready yet. Waiting ${POLL_INTERVAL_MS / 1000}s before next check...`);
+      await wait(POLL_INTERVAL_MS);
+    }
+  }
+
+  // If we exit the loop without getting "completed", throw an error
+  // so the catch block in the button listener can handle it gracefully.
+  throw new Error(`VirusTotal scan did not complete after ${MAX_ATTEMPTS} attempts.`);
+}
+
+// async function getRecentUrlReport(urlToFetch){
+//   const apiKey = (await browser.storage.local.get("virusTotalApiKey")).virusTotalApiKey ?? "";
+
+//   const options = {
+//     method: 'GET',
+//     headers: {
+//       accept: 'application/json',
+//       'x-apikey': apiKey
+//     }
+//   };
+
+//   return fetch(`${urlToFetch}`, options)
+//     .then(res => {return res.json()})
+//     .then(data => {console.log("Full JSON Output:\n" + JSON.stringify(data, null, 2));
+//   return data;})
+//     .catch(err => console.error(err));
+// }
+
+function updateScanResultsUI(JSON, urlId) 
+{
+  // URL Object uses `last_analysis_stats`, Analysis Object uses `stats`.
+  // Extract whichever one exists into a single `stats` variable.
+  const stats = JSON.data.attributes.last_analysis_stats ?? JSON.data.attributes.stats;
+
+  // Now all field accesses are clean and identical regardless of source
+  const maliciousCount  = stats.malicious;
+  const suspiciousCount = stats.suspicious;
+  const harmlessCount   = stats.harmless;
+  const undetectedCount = stats.undetected;
+  const timeoutCount    = stats.timeout;
+
+  // maliciousCount = JSON.data.attributes.last_analysis_stats.malicious;
+  // suspiciousCount = JSON.data.attributes.last_analysis_stats.suspicious;
+  // harmlessCount = JSON.data.attributes.last_analysis_stats.harmless;
+  // undetectedCount = JSON.data.attributes.last_analysis_stats.undetected;
+  // timeoutCount = JSON.data.attributes.last_analysis_stats.timeout;
+
+  statMalicious.textContent = maliciousCount;
+  statSuspicious.textContent = suspiciousCount;
+  statHarmless.textContent = harmlessCount;
+  statUndetected.textContent = undetectedCount;
+  statTimeout.textContent = timeoutCount;
+
+  if ( maliciousCount > 0 ) {
+    scanResultCard.classList.add("verdict-red");
+    scanVerdictBadge.classList.remove("hidden");
+    scanVerdictBadge.classList.add("red");
+  }
+  else if ( suspiciousCount > 0 ) {
+    scanResultCard.classList.add("verdict-yellow");
+    scanVerdictBadge.classList.remove("hidden");
+    scanVerdictBadge.classList.add("yellow");
+  }
+  else {
+    scanResultCard.classList.add("verdict-green");
+    scanVerdictBadge.classList.remove("hidden");
+    scanVerdictBadge.classList.add("green");
+  }
+
+  scanResultStatus.textContent = ` ${maliciousCount} / 92 engines detected threats.`
+  // scanResultDetails.classList.remove("hidden");
+
+  btnOpenVT.href = `https://www.virustotal.com/gui/url/${urlId}`;
+  // btnOpenVT.href = JSON.data.links.self; // DO NOT USE THIS LINK, IT IS THE API LINK, NOT THE GUI LINK. The GUI link is the one above.
+  btnOpenVT.classList.remove("hidden");
+}
+
+
+// const options = {
+//   method: 'GET',
+//   headers: {
+//     accept: 'application/json',
+//     'x-apikey': 'REDACTED'
+//   }
+// };
+// 
+// fetch('https://www.virustotal.com/api/v3/analyses/u-3641c5f2274c5471278ab5bf1df6d1858d8aa392d85c51301abed2122a3c634f-a13c403b', options)
+//   .then(res => res.json())
+//   .then(res => console.log(res))
+//   .catch(err => console.error(err));
+
+// https://www.virustotal.com/api/v3/analyses/u-3641c5f2274c5471278ab5bf1df6d1858d8aa392d85c51301abed2122a3c634f-a13c403b
+// https://www.virustotal.com/api/v3/analyses/u-3641c5f2274c5471278ab5bf1df6d1858d8aa392d85c51301abed2122a3c634f-a13c403b
+
+// {
+//   "data": {
+//     "type": "analysis",
+//     "id": "u-3641c5f2274c5471278ab5bf1df6d1858d8aa392d85c51301abed2122a3c634f-a13c403b",
+//     "links": {
+//       "self": "https://www.virustotal.com/api/v3/analyses/u-3641c5f2274c5471278ab5bf1df6d1858d8aa392d85c51301abed2122a3c634f-a13c403b"
+//     }
+//   }
+// }
 
 
 // // Modern Industry Standard Syntax

@@ -541,11 +541,15 @@ body {
 /* ── Result Card ── */
 .scan-result-card {
     width: 100%;
+    min-height: 180px;
     border-radius: 8px;
     border: 1px solid rgba(0, 0, 0, 0.12);
     background-color: #ffffff;
     box-sizing: border-box;
     padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
     transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -637,13 +641,9 @@ body {
     display: block;
 }
 
-/* Hover breakdown details */
-.scan-result-card:hover .scan-result-details:not(.hidden) {
-    display: flex;
-}
-
+/* Detailed Breakdown Section (Displayed by Default) */
 .scan-result-details {
-    display: none;
+    display: flex;
     flex-direction: column;
     gap: 4px;
     margin-top: 12px;
