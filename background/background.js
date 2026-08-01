@@ -333,8 +333,8 @@ async function saveUrlToFolder(folderId, url) {
         }
 
         // Don't add duplicates
-        if (!folder.urls.includes(url)) {
-            folder.urls.push(url);
+        if (!folder.urls.some((entry) => entry.link === url)) {
+            folder.urls.push({ link: url, scanData: null });
             await browser.storage.local.set({ folderData });
             console.log("[background] URL saved to folder:", folder.name);
         } else {

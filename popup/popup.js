@@ -14,14 +14,18 @@
  * DATA MODEL (stored in browser.storage.local under key "folderData"):
  *   {
  *     folders: [
- *       { id: "f-1234567890", name: "Recipes",  urls: ["https://..."] },
- *       { id: "f-0987654321", name: "Work",     urls: ["https://..."] },
+ *       {
+ *         id: "f-1234567890",
+ *         name: "Recipes",
+ *         urls: [
+ *           { link: "https://...", scanData: VirusTotal JSON or null },
+ *         ],
+ *       },
  *     ]
  *   }
  *
- * The "General" folder is NOT stored — it's computed on the fly by
- * combining (unioning) all URLs from every folder. This means it's
- * always up to date without needing any sync logic.
+ * scanData is persisted after each scan so verdict colors and dropdown
+ * stats survive popup close and browser restart without re-calling the API.
  */
 
 /* ==========================================================================
@@ -55,7 +59,7 @@ const scanResultCard = document.getElementById("scan-result-card");
 const scanVerdictBadge = document.getElementById("scan-verdict-badge"); // Initially hidden
 const scanResultStatus = document.getElementById("scan-result-status");
 const btnOpenVT = document.getElementById("btn-open-vt"); // Initially hidden
-const scanResultDetails = document.getElementById("scan-result-details"); // Initially hidden
+// const scanResultDetails = document.getElementById("scan-result-details"); // Initially hidden
 const statMalicious = document.getElementById("stat-malicious");
 const statSuspicious = document.getElementById("stat-suspicious");
 const statUndetected = document.getElementById("stat-undetected");
@@ -135,6 +139,17 @@ async function saveFolderData() {
   }
 }
 
+async function persistScanDataForUrl(link, scanData) {
+  const folder = folderData.folders.find((f) => f.id === activeFolderId);
+  if (!folder) return;
+
+  const entry = folder.urls.find((e) => e.link === link);
+  if (entry) {
+    entry.scanData = scanData;
+    await saveFolderData();
+  }
+}
+
 /**
  * Save the current theme state (light/dark mode) to storage.
  *
@@ -180,16 +195,13 @@ async function restoreThemeState() {
       iconSun.classList.remove("hidden");
       iconMoon.classList.add("hidden");
     }
-  } 
-  catch (err) 
-  {
-    if (err instanceof TypeError) 
-    {// This is for fresh installs
+  }
+  catch (err) {
+    if (err instanceof TypeError) {// This is for fresh installs
       iconSun.classList.remove("hidden");
       iconMoon.classList.add("hidden");
     }
-    else 
-    {
+    else {
       console.error("[popup] Failed to restore theme state:", err);
     }
   }
@@ -306,7 +318,7 @@ async function createFolder(name) {
   const newFolder = {
     id: "f-" + Date.now(), // Unique ID
     name: trimmedName,
-    urls: [], // Starts with no URLs
+    urls: [],
   };
 
   // Array.push() adds the new folder to the END of the array
@@ -455,42 +467,175 @@ function renderUrlList() {
     return;
   }
 
-  // Create a DOM element for each URL
-  urls.forEach((url) => {
+  // Create a DOM element for each URL item box
+  urls.forEach((urlEntry) => {
+    const urlLink = urlEntry.link;
     const item = document.createElement("div");
     item.className = "url-item";
-    // Store the URL on the element as a data attribute so we can
-    // reference it later (e.g., when searching)
-    item.dataset.url = url;
+    item.dataset.url = urlLink;
 
-    // ── Clickable link ──
-    // <a> elements with an href become clickable links.
-    // target="_blank" opens the link in a new tab.
-    // rel="noopener noreferrer" is a security best practice — it prevents
-    // the opened page from accessing our popup's window object.
-    const link = document.createElement("a");
-    link.className = "url-item-link";
-    link.href = url;
-    link.textContent = url;
-    link.target = "_blank";
-    link.rel = "noopener noreferrer";
-    link.title = url; // Full URL shown as tooltip on hover
+    // ── 1. Main Top Row Container ──
+    const mainRow = document.createElement("div");
+    mainRow.className = "url-item-main";
 
-    // ── Delete button for URLs ──
+    // Far Left: Re-scan button (2-arrow reload icon)
+    const rescanBtn = document.createElement("button");
+    rescanBtn.className = "url-rescan-btn";
+    rescanBtn.title = "Re-scan URL";
+    rescanBtn.innerHTML = `
+      <svg class="url-rescan-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+      </svg>
+    `;
+
+    // Middle: Clickable truncated URL link
+    const linkEl = document.createElement("a");
+    linkEl.className = "url-item-link";
+    linkEl.href = urlLink;
+    linkEl.textContent = urlLink;
+    linkEl.target = "_blank";
+    linkEl.rel = "noopener noreferrer";
+    linkEl.title = urlLink;
+
+    // Far Right: Action buttons group
+    const actionsGroup = document.createElement("div");
+    actionsGroup.className = "url-actions";
+
+    // Dropdown chevron button
+    const dropdownBtn = document.createElement("button");
+    dropdownBtn.className = "url-dropdown-btn";
+    dropdownBtn.title = "Toggle scan details";
+    dropdownBtn.innerHTML = `
+      <svg class="url-dropdown-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="6 9 12 15 18 9"></polyline>
+      </svg>
+    `;
+
+    // Delete button
     const deleteBtn = document.createElement("button");
     deleteBtn.className = "url-delete-btn";
     deleteBtn.textContent = "✕";
     deleteBtn.title = "Remove URL";
     deleteBtn.addEventListener("click", (e) => {
-      e.preventDefault(); // Don't follow the link
-      e.stopPropagation(); // Don't trigger parent handlers
-      deleteUrlFromFolder(url);
+      e.preventDefault();
+      e.stopPropagation();
+      deleteUrlFromFolder(urlLink);
     });
 
-    item.appendChild(link);
-    item.appendChild(deleteBtn);
+    actionsGroup.appendChild(dropdownBtn);
+    actionsGroup.appendChild(deleteBtn);
+
+    mainRow.appendChild(rescanBtn);
+    mainRow.appendChild(linkEl);
+    mainRow.appendChild(actionsGroup);
+
+    // ── 2. Collapsible Details Panel (Dropdown) ──
+    const detailsPanel = document.createElement("div");
+    detailsPanel.className = "url-details-panel hidden";
+
+    detailsPanel.innerHTML = `
+      <div class="url-details-header">
+        <div class="url-details-verdict">
+          <span class="verdict-badge url-verdict-badge hidden"></span>
+          <span class="url-verdict-status">No scan data available</span>
+        </div>
+        <a class="btn-open-vt url-btn-open-vt hidden" href="#" target="_blank" rel="noopener noreferrer" title="Open new tab for more detailed VirusTotal results">
+          <svg class="vt-external-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+            <polyline points="15 3 21 3 21 9"></polyline>
+            <line x1="10" y1="14" x2="21" y2="3"></line>
+          </svg>
+        </a>
+      </div>
+      <div class="url-details-stats">
+        <div class="detail-row"><span class="detail-label">Malicious:</span> <span class="stat-val malicious stat-malicious">-</span></div>
+        <div class="detail-row"><span class="detail-label">Suspicious:</span> <span class="stat-val suspicious stat-suspicious">-</span></div>
+        <div class="detail-row"><span class="detail-label">Undetected:</span> <span class="stat-val stat-undetected">-</span></div>
+        <div class="detail-row"><span class="detail-label">Harmless:</span> <span class="stat-val harmless stat-harmless">-</span></div>
+        <div class="detail-row"><span class="detail-label">Timeout:</span> <span class="stat-val stat-timeout">-</span></div>
+      </div>
+    `;
+
+    // Dropdown toggle click listener
+    dropdownBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const isHidden = detailsPanel.classList.toggle("hidden");
+      item.classList.toggle("expanded", !isHidden);
+    });
+
+    // Re-scan button click listener
+    rescanBtn.addEventListener("click", async (e) => {
+      try {
+        const itemContainer = e.currentTarget.closest(".url-item");
+        await scanAndPersistFolderUrl(itemContainer.dataset.url, itemContainer);
+      } catch (err) {
+        console.error("Failed to fetch report:", err);
+      }
+    });
+
+    item.appendChild(mainRow);
+    item.appendChild(detailsPanel);
     urlListEl.appendChild(item);
+
+    if (urlEntry.scanData) {
+      updateFolderUrlItemUI(item, urlEntry.scanData, getBase64CachedUrlId(urlLink));
+    }
   });
+}
+
+async function scanAndPersistFolderUrl(urlLink, itemContainer) {
+  const urlId = getBase64CachedUrlId(urlLink);
+  const latestAnalysisJSON = await checkCachedUrlReport(urlId);
+  let scanData;
+
+  if (getHoursAgo(latestAnalysisJSON.data.attributes.last_analysis_date) < 12) {
+    scanData = latestAnalysisJSON;
+  } else {
+    const requestJSON = await requestURL_Rescan(urlId);
+    scanData = await getRecentUrlReport(requestJSON.data.links.self);
+  }
+
+  updateFolderUrlItemUI(itemContainer, scanData, urlId);
+  await persistScanDataForUrl(urlLink, scanData);
+}
+
+function updateFolderUrlItemUI(itemContainer, scanData, urlId) {
+  const stats = scanData.data.attributes.last_analysis_stats ?? scanData.data.attributes.stats;
+  const maliciousCount = stats.malicious;
+  const suspiciousCount = stats.suspicious;
+
+  // 1. Scoped sub-element selectors
+  const badge = itemContainer.querySelector(".url-verdict-badge");
+  const statusEl = itemContainer.querySelector(".url-verdict-status");
+  const openVtBtn = itemContainer.querySelector(".url-btn-open-vt");
+
+  // 2. Set verdict container color
+  itemContainer.classList.remove("verdict-green", "verdict-yellow", "verdict-red");
+  badge.classList.remove("hidden", "green", "yellow", "red");
+
+  if (maliciousCount > 0) {
+    itemContainer.classList.add("verdict-red");
+    badge.classList.add("red");
+  } else if (suspiciousCount > 0) {
+    itemContainer.classList.add("verdict-yellow");
+    badge.classList.add("yellow");
+  } else {
+    itemContainer.classList.add("verdict-green");
+    badge.classList.add("green");
+  }
+
+  // 3. Set text and external link
+  statusEl.textContent = `${maliciousCount} / 92 engines detected threats`;
+  openVtBtn.href = `https://www.virustotal.com/gui/url/${urlId}`;
+  openVtBtn.classList.remove("hidden");
+
+  // 4. Update stats breakdown
+  itemContainer.querySelector(".stat-malicious").textContent = stats.malicious;
+  itemContainer.querySelector(".stat-suspicious").textContent = stats.suspicious;
+  itemContainer.querySelector(".stat-undetected").textContent = stats.undetected;
+  itemContainer.querySelector(".stat-harmless").textContent = stats.harmless;
+  itemContainer.querySelector(".stat-timeout").textContent = stats.timeout;
 }
 
 /**
@@ -501,15 +646,15 @@ function renderUrlList() {
  *
  * Array.filter() creates a new array excluding the URL to delete.
  *
- * @param {string} url — The URL string to remove
+ * @param {string} urlLink — The URL string to remove
  */
-async function deleteUrlFromFolder(url) {
+async function deleteUrlFromFolder(urlLink) {
 
-    // Remove from the specific active folder only
-    const folder = folderData.folders.find((f) => f.id === activeFolderId);
-    if (folder) {
-      folder.urls = folder.urls.filter((u) => u !== url);
-    }
+  // Remove from the specific active folder only
+  const folder = folderData.folders.find((f) => f.id === activeFolderId);
+  if (folder) {
+    folder.urls = folder.urls.filter((entry) => entry.link !== urlLink);
+  }
 
   // if (activeFolderId === "__general__") {
   //   // Remove from ALL folders
@@ -561,10 +706,10 @@ function searchUrls(query) {
   const results = [];
 
   folderData.folders.forEach((folder) => {
-    folder.urls.forEach((url) => {
-      if (url.toLowerCase().includes(lowerQuery)) {
+    folder.urls.forEach((entry) => {
+      if (entry.link.toLowerCase().includes(lowerQuery)) {
         results.push({
-          url: url,
+          url: entry.link,
           folderId: folder.id,
           folderName: folder.name,
         });
@@ -746,7 +891,7 @@ btnURL_Check.addEventListener("click", async () => {
     // const urlToCheck = "https://example.com/page";
     const urlId = getBase64CachedUrlId(urlToCheck);
     console.log("Base64 URL ID:", urlId);
-    
+
     const latestAnalysisJSON = await checkCachedUrlReport(urlId);
     console.log("Returned JSON:", latestAnalysisJSON);
     console.log("Latest Analysis Date:", getLocalTime(latestAnalysisJSON.data.attributes.last_analysis_date));
@@ -754,7 +899,7 @@ btnURL_Check.addEventListener("click", async () => {
 
     if (getHoursAgo(latestAnalysisJSON.data.attributes.last_analysis_date) < 12) {
       console.log(`The cached report is recent (less than 12 hours old). Last analysis was at ${getLocalTime(latestAnalysisJSON.data.attributes.last_analysis_date)}.`);
-      updateScanResultsUI( latestAnalysisJSON, urlId );
+      updateScanResultsUI(latestAnalysisJSON, urlId);
       // statMalicious.textContent = latestAnalysisJSON.data.attributes.last_analysis_stats.malicious;
       // statSuspicious.textContent = latestAnalysisJSON.data.attributes.last_analysis_stats.suspicious;
       // statHarmless.textContent = latestAnalysisJSON.data.attributes.last_analysis_stats.harmless;
@@ -768,9 +913,9 @@ btnURL_Check.addEventListener("click", async () => {
     }
     else {
       console.log(`The cached report is older than 12 hours. Last analysis was at ${getLocalTime(latestAnalysisJSON.data.attributes.last_analysis_date)}.`);
-      const requestJSON = await requestURL_Rescan( urlId );
-      const recentJSON = await getRecentUrlReport( requestJSON.data.links.self );
-      updateScanResultsUI( recentJSON, urlId );
+      const requestJSON = await requestURL_Rescan(urlId);
+      const recentJSON = await getRecentUrlReport(requestJSON.data.links.self);
+      updateScanResultsUI(recentJSON, urlId);
       // console.log(`Malicious: ${latestAnalysisJSON.data.attributes.last_analysis_stats.malicious}`);
       // console.log(`Suspicious:  ${latestAnalysisJSON.data.attributes.last_analysis_stats.suspicious}`);
       // console.log(`Harmless:  ${latestAnalysisJSON.data.attributes.last_analysis_stats.harmless}`);
@@ -797,13 +942,13 @@ btnURL_Check.addEventListener("click", async () => {
 function getBase64CachedUrlId(url) {
   // Step 1: Convert the URL string to UTF-8 bytes (handles special characters safely)
   const utf8Bytes = new TextEncoder().encode(url);
-  
+
   // Step 2: Convert UTF-8 bytes into a binary string for btoa()
   const binaryString = Array.from(utf8Bytes, (byte) => String.fromCharCode(byte)).join("");
-  
+
   // Step 3: Convert to standard Base64 string
   const base64 = btoa(binaryString);
-  
+
   // Step 4: Make URL-safe (replace + with -, / with _, and remove = padding)
   return base64
     .replace(/=/g, "")
@@ -864,15 +1009,15 @@ function getHoursAgo(unixTimestamp) {
 //   console.log(`seconds elapsed = ${Math.floor(ms / 1000)}`);
 //   // Expected output: "seconds elapsed = 2"
 // }, 2000);
-  // 2. Convert seconds to milliseconds and pass to Date constructor
-  // const dateObject = new Date(unixTimestamp * 1000);
+// 2. Convert seconds to milliseconds and pass to Date constructor
+// const dateObject = new Date(unixTimestamp * 1000);
 
-  // 3. Format as a readable local date and time string
-  // const localTimeString = dateObject.toLocaleString();
+// 3. Format as a readable local date and time string
+// const localTimeString = dateObject.toLocaleString();
 
-  // console.log(localTimeString); 
-  // return localTimeString;
-  // Output on your device (e.g.): "7/26/2026, 6:45:31 PM" (in your local timezone)
+// console.log(localTimeString); 
+// return localTimeString;
+// Output on your device (e.g.): "7/26/2026, 6:45:31 PM" (in your local timezone)
 
 
 // async function checkUrlCache(targetUrl, apiKey) {
@@ -939,11 +1084,13 @@ async function checkCachedUrlReport(urlId) {
     }
   };
 
-  
+
   return fetch(`https://www.virustotal.com/api/v3/urls/${urlId}`, options)
-    .then(res => {return res.json()})
-    .then(data => {console.log("Full JSON Output:\n" + JSON.stringify(data, null, 2));
-  return data;})
+    .then(res => { return res.json() })
+    .then(data => {
+      console.log("Full JSON Output:\n" + JSON.stringify(data, null, 2));
+      return data;
+    })
     .catch(err => console.error(err));
 
   // return res;
@@ -961,9 +1108,11 @@ async function requestURL_Rescan(urlId) {
   };
 
   return fetch(`https://www.virustotal.com/api/v3/urls/${urlId}/analyse`, options)
-    .then(res => {return res.json()})
-    .then(data => {console.log("Full JSON Output:\n" + JSON.stringify(data, null, 2));
-  return data;})
+    .then(res => { return res.json() })
+    .then(data => {
+      console.log("Full JSON Output:\n" + JSON.stringify(data, null, 2));
+      return data;
+    })
     .catch(err => console.error(err));
 }
 
@@ -1040,18 +1189,17 @@ async function getRecentUrlReport(urlToFetch) {
 //     .catch(err => console.error(err));
 // }
 
-function updateScanResultsUI(JSON, urlId) 
-{
+function updateScanResultsUI(JSON, urlId) {
   // URL Object uses `last_analysis_stats`, Analysis Object uses `stats`.
   // Extract whichever one exists into a single `stats` variable.
   const stats = JSON.data.attributes.last_analysis_stats ?? JSON.data.attributes.stats;
 
   // Now all field accesses are clean and identical regardless of source
-  const maliciousCount  = stats.malicious;
+  const maliciousCount = stats.malicious;
   const suspiciousCount = stats.suspicious;
-  const harmlessCount   = stats.harmless;
+  const harmlessCount = stats.harmless;
   const undetectedCount = stats.undetected;
-  const timeoutCount    = stats.timeout;
+  const timeoutCount = stats.timeout;
 
   // maliciousCount = JSON.data.attributes.last_analysis_stats.malicious;
   // suspiciousCount = JSON.data.attributes.last_analysis_stats.suspicious;
@@ -1065,12 +1213,12 @@ function updateScanResultsUI(JSON, urlId)
   statUndetected.textContent = undetectedCount;
   statTimeout.textContent = timeoutCount;
 
-  if ( maliciousCount > 0 ) {
+  if (maliciousCount > 0) {
     scanResultCard.classList.add("verdict-red");
     scanVerdictBadge.classList.remove("hidden");
     scanVerdictBadge.classList.add("red");
   }
-  else if ( suspiciousCount > 0 ) {
+  else if (suspiciousCount > 0) {
     scanResultCard.classList.add("verdict-yellow");
     scanVerdictBadge.classList.remove("hidden");
     scanVerdictBadge.classList.add("yellow");
@@ -1087,6 +1235,8 @@ function updateScanResultsUI(JSON, urlId)
   btnOpenVT.href = `https://www.virustotal.com/gui/url/${urlId}`;
   // btnOpenVT.href = JSON.data.links.self; // DO NOT USE THIS LINK, IT IS THE API LINK, NOT THE GUI LINK. The GUI link is the one above.
   btnOpenVT.classList.remove("hidden");
+  // scanResultDetails.classList.remove("hidden");
+
 }
 
 
@@ -1153,27 +1303,27 @@ function updateScanResultsUI(JSON, urlId)
 //   return data;
 // }
 
-        // await browser.storage.local.set({
-        //     // extensionEnabled: toggleEnabled.checked,
-        //     // accessibleThemes: toggleAccess.checked,
-        //     contextMenuMode,
-        //     virusTotalApiKey
-        // });
+// await browser.storage.local.set({
+//     // extensionEnabled: toggleEnabled.checked,
+//     // accessibleThemes: toggleAccess.checked,
+//     contextMenuMode,
+//     virusTotalApiKey
+// });
 
-  // const options = {
-  //   method: 'POST',
-  //   headers: {
-  //     'x-apikey': 'cdde9b4bba2526230859ac68dc6669534cd881f6823690efe36600b8ea1f51fc',
-  //     accept: 'application/json',
-  //     'content-type': 'application/x-www-form-urlencoded'
-  //   },
-  //   body: new URLSearchParams({url: targetUrl})
-  // };
+// const options = {
+//   method: 'POST',
+//   headers: {
+//     'x-apikey': 'cdde9b4bba2526230859ac68dc6669534cd881f6823690efe36600b8ea1f51fc',
+//     accept: 'application/json',
+//     'content-type': 'application/x-www-form-urlencoded'
+//   },
+//   body: new URLSearchParams({url: targetUrl})
+// };
 
-  // fetch('https://www.virustotal.com/api/v3/urls/${urlId}', options)
-  //   .then(res => res.json())
-  //   .then(res => console.log(res))
-  //   .catch(err => console.error(err));
+// fetch('https://www.virustotal.com/api/v3/urls/${urlId}', options)
+//   .then(res => res.json())
+//   .then(res => console.log(res))
+//   .catch(err => console.error(err));
 
 
 // ── New folder input: create folder on Enter key ────────────────────
@@ -1193,7 +1343,7 @@ newFolderInput.addEventListener("keydown", async (e) => {
   if (e.key === "Enter") {
     const name = newFolderInput.value;
 
-    if ( folderData.folders.some((f) => f.name.toLowerCase() === name.trim().toLowerCase()) ) {
+    if (folderData.folders.some((f) => f.name.toLowerCase() === name.trim().toLowerCase())) {
       // If a folder with the same name already exists, show an error message
       alert(`A folder named "${name.trim()}" already exists. Please choose a different name.`);
       return; // Don't create the folder
