@@ -90,9 +90,9 @@ let folderData = { folders: [] };
    the initial UI state.
    ========================================================================== */
 async function init() {
-  // console.log("[popup] Initialising popup...");
   await loadFolderData();
-  await restoreThemeState(); // Restore light/dark mode
+  await restoreThemeState();
+  await restoreActiveTab();
   renderSidebar();
   renderUrlList();
 }
@@ -112,8 +112,13 @@ async function init() {
  */
 async function loadFolderData() {
   try {
-    const result = await browser.storage.local.get("folderData");
+    const result = await browser.storage.local.get(["folderData", "activeFolderId"]);
     folderData = result.folderData || { folders: [] };
+    activeFolderId = result.activeFolderId ?? null;
+
+    if (activeFolderId && !folderData.folders.some((f) => f.id === activeFolderId)) {
+      activeFolderId = folderData.folders[0]?.id ?? null;
+    }
   } catch (err) {
     console.error("[popup] Failed to load folder data:", err);
     folderData = { folders: [] };
@@ -143,6 +148,37 @@ async function persistScanDataForUrl(link, scanData) {
   if (entry) {
     entry.scanData = scanData;
     await saveFolderData();
+  }
+}
+
+async function saveActiveTab(tabId) {
+  try {
+    await browser.storage.local.set({ activeTab: tabId });
+  } catch (err) {
+    console.error("[popup] Failed to save active tab:", err);
+  }
+}
+
+async function restoreActiveTab() {
+  try {
+    const { activeTab } = await browser.storage.local.get("activeTab");
+    const tabId = activeTab || "folders";
+
+    tabButtons.forEach((b) => b.classList.remove("active"));
+    Object.values(panels).forEach((p) => p.classList.remove("active"));
+
+    const btn = document.querySelector(`.tab-btn[data-tab="${tabId}"]`);
+    const panel = panels[tabId];
+    if (btn && panel) {
+      btn.classList.add("active");
+      panel.classList.add("active");
+      return;
+    }
+
+    document.querySelector('.tab-btn[data-tab="folders"]')?.classList.add("active");
+    panelFolders.classList.add("active");
+  } catch (err) {
+    console.error("[popup] Failed to restore active tab:", err);
   }
 }
 
@@ -284,8 +320,9 @@ function renderSidebar() {
  *
  * @param {string} folderId — The ID of the folder to select, or "__general__"
  */
-function selectFolder(folderId) {
+async function selectFolder(folderId) {
   activeFolderId = folderId;
+  await browser.storage.local.set({ activeFolderId }); // Persist the active folder across popup opens
   renderSidebar(); // Re-render to update active highlighting
   renderUrlList(); // Show this folder's URLs in the main panel
 }
@@ -318,6 +355,10 @@ async function createFolder(name) {
   // Array.push() adds the new folder to the END of the array
   folderData.folders.push(newFolder);
   await saveFolderData();
+
+  activeFolderId = newFolder.id;
+  await browser.storage.local.set({ activeFolderId });
+
 
   // Re-render the sidebar to show the new folder
   renderSidebar();
@@ -364,6 +405,8 @@ async function deleteFolder(folderId) {
   } else {
     activeFolderId = null; // No folders left
   }
+  await browser.storage.local.set({ activeFolderId });
+  // Need to save active folder to storage here
 
   // // Array.push() adds the new folder to the END of the array
   // folderData.folders.push(newFolder);
@@ -782,15 +825,15 @@ const panels = {
 };
 
 tabButtons.forEach((btn) => {
-  btn.addEventListener("click", () => {
-    // Deactivate all tabs and panels
+  btn.addEventListener("click", async () => {
     tabButtons.forEach((b) => b.classList.remove("active"));
     Object.values(panels).forEach((p) => p.classList.remove("active"));
 
-    // Activate the clicked tab and its corresponding panel
     btn.classList.add("active");
     const panel = panels[btn.dataset.tab];
     if (panel) panel.classList.add("active");
+
+    await saveActiveTab(btn.dataset.tab);
   });
 });
 
