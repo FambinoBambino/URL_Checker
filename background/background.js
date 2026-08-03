@@ -1,6 +1,3 @@
-// <!-- /* AI-Review pending... */ -->
-
-
 /**
  * background.js — The extension's "event page" (MV3 non-persistent background script).
  *
@@ -344,45 +341,6 @@ async function saveUrlToFolder(folderId, url) {
         console.error("[background] Failed to save URL to folder:", err);
     }
 }
-
-// NEEDS CHANGES: General should NOT add URL to all folders, can probably add a hidden folder that contains URLs not in any other folder.
-/**
- * Save a URL to ALL folders (the "General" action).
- *
- * Loops through every folder and adds the URL if not already present.
- * This mirrors the popup's General folder concept.
- *
- * The URL to save
- */
-// @param {string} url — The URL to save
-// async function saveUrlToAllFolders(url) {
-//     try {
-//         const { folderData } = await browser.storage.local.get("folderData");
-//         const folders = folderData?.folders || [];
-
-//         if (folders.length === 0) {
-//             console.warn("[background] No folders exist. URL not saved.");
-//             return;
-//         }
-
-//         let saved = false;
-//         folders.forEach((folder) => {
-//             if (!folder.urls.includes(url)) {
-//                 folder.urls.push(url);
-//                 saved = true;
-//             }
-//         });
-
-//         if (saved) {
-//             await browser.storage.local.set({ folderData });
-//             console.log("[background] URL saved to all folders.");
-//         } else {
-//             console.log("[background] URL already in all folders.");
-//         }
-//     } catch (err) {
-//         console.error("[background] Failed to save URL to all folders:", err);
-//     }
-// }
 
 /* ==========================================================================
    LISTENERS

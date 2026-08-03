@@ -1,5 +1,3 @@
-/* AI-Review complete */
-
 /**
  * popup.js — Main script for the extension popup.
  *
@@ -36,7 +34,6 @@
    ========================================================================== */
 const tabButtons = document.querySelectorAll(".tab-btn");
 const panelFolders = document.getElementById("panel-folders");
-// const panelImage = document.getElementById("panel-image");
 const panelURL_Check = document.getElementById("panel-URL-Check");
 const searchInput = document.getElementById("search-input");
 const searchResultsEl = document.getElementById("search-results");
@@ -46,7 +43,6 @@ const iconSun = document.getElementById("icon-sun");
 const btnHelp = document.getElementById("btn-help");
 const btnSettings = document.getElementById("btn-settings");
 const folderSidebarList = document.getElementById("folder-sidebar-list");
-// const generalFolderBtn = document.querySelector(".general-folder");
 const newFolderInput = document.getElementById("new-folder-input");
 const btnNewFolder = document.getElementById("btn-new-folder");
 const folderHeading = document.getElementById("folder-heading");
@@ -182,8 +178,6 @@ async function restoreThemeState() {
   try {
     const result = await browser.storage.local.get("themeState");
     const state = result.themeState;
-
-    // console.log(" Restoring theme state:", state);
 
     // Restore light/dark mode
     if (state.isDarkMode) {
@@ -362,12 +356,7 @@ async function deleteFolder(folderId) {
   // If the deleted folder was the one being viewed, fall back to General
   // I should change this to select the next folder if possible, else the previous one. If no folder exists, 
   // then change text to the right to say something like "No folders exist"
-  // if (activeFolderId === folderId) {
-  //   activeFolderId = "__general__";
-  // }
-  // if (activeFolderId === folderId && folder. ) {
 
-  // }
   if (folderData.folders.at(folderIndex)) {
     activeFolderId = folderData.folders.at(folderIndex).id;
   } else if (folderData.folders.at(folderIndex - 1)) {
@@ -375,13 +364,6 @@ async function deleteFolder(folderId) {
   } else {
     activeFolderId = null; // No folders left
   }
-
-
-  // const newFolder = {
-  //   id: "f-" + Date.now(), // Unique ID
-  //   name: trimmedName,
-  //   urls: [], // Starts with no URLs
-  // };
 
   // // Array.push() adds the new folder to the END of the array
   // folderData.folders.push(newFolder);
@@ -421,32 +403,6 @@ function renderUrlList() {
     urls = folder.urls;
     headingText = folder.name;
   }
-
-  // if (activeFolderId === "__general__") {
-  //   // ── General folder: union of all URLs ──
-  //   // We use a Set to collect unique URLs, then convert back to an array.
-  //   //
-  //   // How this works step by step:
-  //   //   1. Create an empty Set
-  //   //   2. Loop through every folder, and for each URL in that folder,
-  //   //      call urlSet.add(url) — duplicates are ignored automatically
-  //   //   3. Spread the Set back into an array with [...urlSet]
-  //   //      (the ... "spread operator" unpacks an iterable into individual values)
-  //   const urlSet = new Set();
-  //   folderData.folders.forEach((folder) => {
-  //     folder.urls.forEach((url) => urlSet.add(url));
-  //   });
-  //   urls = [...urlSet];
-  //   headingText = "General";
-  // } else {
-  //   // ── Specific folder: find it and show its URLs ──
-  //   // Array.find() searches for the first matching element
-  //   const folder = folderData.folders.find((f) => f.id === activeFolderId);
-  //   if (folder) {
-  //     urls = folder.urls;
-  //     headingText = folder.name;
-  //   }
-  // }
 
   // Update the heading at the top of the main panel
   folderHeading.textContent = headingText;
@@ -656,19 +612,6 @@ async function deleteUrlFromFolder(urlLink) {
     folder.urls = folder.urls.filter((entry) => entry.link !== urlLink);
   }
 
-  // if (activeFolderId === "__general__") {
-  //   // Remove from ALL folders
-  //   folderData.folders.forEach((folder) => {
-  //     folder.urls = folder.urls.filter((u) => u !== url);
-  //   });
-  // } else {
-  //   // Remove from the specific active folder only
-  //   const folder = folderData.folders.find((f) => f.id === activeFolderId);
-  //   if (folder) {
-  //     folder.urls = folder.urls.filter((u) => u !== url);
-  //   }
-  // }
-
   await saveFolderData();
   renderUrlList();
 }
@@ -851,11 +794,6 @@ tabButtons.forEach((btn) => {
   });
 });
 
-// ── General folder click ────────────────────────────────────────────
-// generalFolderBtn.addEventListener("click", () => {
-//   selectFolder("__general__");
-// });
-
 // ── "New Folder" button ─────────────────────────────────────────────
 // First click: show the text input so the user can type a folder name.
 // The folder is actually CREATED when the user presses Enter in the input.
@@ -872,17 +810,6 @@ btnNewFolder.addEventListener("click", () => {
   }
 });
 
-// For now, we do not do asyn since we just want to test the button, but once we add a function for 
-// retrieving result from VirusTotal API, we will need to make the function async and await the result.
-// btnURL_Check.addEventListener("click", () => {
-//   // const urlId = getBase64CachedUrlId("https://example.com/page");
-//   latestAnalysisJSON = checkCachedUrlReport("https://example.com/page");
-//   console.log(latestAnalysisJSON);
-//   // console.log("meow");
-//   // alert(`report id is ${latestAnalysisJSON.data.id}`);
-//   // alert(`Base64 URL ID for "https://example.com/page": ${urlId}`);
-//   // alert(await browser.storage.local.get("virusTotalApiKey"));
-// })
 // Mark listener as async so we can use await
 btnURL_Check.addEventListener("click", async () => {
   try {
@@ -900,26 +827,12 @@ btnURL_Check.addEventListener("click", async () => {
     if (getHoursAgo(latestAnalysisJSON.data.attributes.last_analysis_date) < 12) {
       console.log(`The cached report is recent (less than 12 hours old). Last analysis was at ${getLocalTime(latestAnalysisJSON.data.attributes.last_analysis_date)}.`);
       updateScanResultsUI(latestAnalysisJSON, urlId);
-      // statMalicious.textContent = latestAnalysisJSON.data.attributes.last_analysis_stats.malicious;
-      // statSuspicious.textContent = latestAnalysisJSON.data.attributes.last_analysis_stats.suspicious;
-      // statHarmless.textContent = latestAnalysisJSON.data.attributes.last_analysis_stats.harmless;
-      // statUndetected.textContent = latestAnalysisJSON.data.attributes.last_analysis_stats.undetected;
-      // statTimeout.textContent = latestAnalysisJSON.data.attributes.last_analysis_stats.timeout;
-
-      // console.log(`Malicious: ${latestAnalysisJSON.data.attributes.last_analysis_stats.malicious}`);
-      // console.log(`Suspicious:  ${latestAnalysisJSON.data.attributes.last_analysis_stats.suspicious}`);
-      // console.log(`Harmless:  ${latestAnalysisJSON.data.attributes.last_analysis_stats.harmless}`);
-      // console.log(`Undetected:  ${latestAnalysisJSON.data.attributes.last_analysis_stats.undetected}`);
     }
     else {
       console.log(`The cached report is older than 12 hours. Last analysis was at ${getLocalTime(latestAnalysisJSON.data.attributes.last_analysis_date)}.`);
       const requestJSON = await requestURL_Rescan(urlId);
       const recentJSON = await getRecentUrlReport(requestJSON.data.links.self);
       updateScanResultsUI(recentJSON, urlId);
-      // console.log(`Malicious: ${latestAnalysisJSON.data.attributes.last_analysis_stats.malicious}`);
-      // console.log(`Suspicious:  ${latestAnalysisJSON.data.attributes.last_analysis_stats.suspicious}`);
-      // console.log(`Harmless:  ${latestAnalysisJSON.data.attributes.last_analysis_stats.harmless}`);
-      // console.log(`Undetected:  ${latestAnalysisJSON.data.attributes.last_analysis_stats.undetected}`);
     }
 
 
@@ -927,8 +840,6 @@ btnURL_Check.addEventListener("click", async () => {
     console.error("Failed to fetch report:", err);
   }
 });
-
-// First thing I want to with button is get the result in terms of hours/days since the latest analysis.
 
 /**
  * Converts any URL string into a VirusTotal v3 url_id.
@@ -986,9 +897,6 @@ function getSecondsAgo(unixTimestamp) {
 }
 
 function getHoursAgo(unixTimestamp) {
-  // 1. Extract the raw Unix timestamp from the VirusTotal API response
-  // const unixTimestamp = response.data.attributes.date; // e.g. 1785116731
-  // const ms = Date.now() - unixTimestamp;
   const currentSeconds = Math.floor(Date.now() / 1000);
   const difference = currentSeconds - unixTimestamp;
 
@@ -996,86 +904,13 @@ function getHoursAgo(unixTimestamp) {
   return Math.floor(difference / 3600);
 }
 
-//   // This example takes 2 seconds to run
-// const start = Date.now();
-// console.log(Date.now());
-
-// console.log("starting timer...");
-// // Expected output: "starting timer..."
-
-// setTimeout(() => {
-//   const ms = Date.now() - start;
-
-//   console.log(`seconds elapsed = ${Math.floor(ms / 1000)}`);
-//   // Expected output: "seconds elapsed = 2"
-// }, 2000);
-// 2. Convert seconds to milliseconds and pass to Date constructor
-// const dateObject = new Date(unixTimestamp * 1000);
-
-// 3. Format as a readable local date and time string
-// const localTimeString = dateObject.toLocaleString();
-
-// console.log(localTimeString); 
-// return localTimeString;
-// Output on your device (e.g.): "7/26/2026, 6:45:31 PM" (in your local timezone)
-
-
-// async function checkUrlCache(targetUrl, apiKey) {
-//   // 1. Generate the VirusTotal URL ID
-//   const urlId = getVirusTotalUrlId(targetUrl);
-
-//   // 2. Call the GET /api/v3/urls/{id} endpoint
-//   const response = await fetch(`https://www.virustotal.com/api/v3/urls/${urlId}`, {
-//     method: "GET",
-//     headers: {
-//       "x-apikey": apiKey,
-//       "accept": "application/json"
-//     }
-//   });
-
-//   // 3. Handle response status
-//   if (response.status === 200) {
-//     const data = await response.json();
-//     console.log("Found cached report!", data);
-//     return data;
-//   } else if (response.status === 404) {
-//     console.log("URL not found in VirusTotal database. Needs a fresh scan.");
-//     return null; // Signals that you should call POST /urls to trigger a live scan
-//   } else {
-//     throw new Error(`VirusTotal API Error: ${response.status}`);
-//   }
-// }
-
-// function getCachedAnalysisID(targetUrl, apiKey) {
-//   const urlId = getBase64CachedUrlId(targetUrl);
-
-//   const options = {
-//     method: 'POST',
-//     headers: {
-//       'x-apikey': 'cdde9b4bba2526230859ac68dc6669534cd881f6823690efe36600b8ea1f51fc',
-//       accept: 'application/json',
-//       'content-type': 'application/x-www-form-urlencoded'
-//     },
-//     body: new URLSearchParams({url: targetUrl})
-//   };
-
-//   fetch('https://www.virustotal.com/api/v3/urls/${urlId}', options)
-//     .then(res => res.json())
-//     .then(res => console.log(res))
-//     .catch(err => console.error(err));
-// }
-
 
 async function checkCachedUrlReport(urlId) {
   // This function actually uses the API for retrieving the cached analsysis, not just the ID.
-  // const urlId = getBase64CachedUrlId(targetUrl);
-  // console.log(`Checking cached report for URL: ${targetUrl} (ID: ${urlId})`);
-  // const apiKey = storage.getItem("virustotalApiKey"); // Retrieve the API key from storage
   const apiKey = (await browser.storage.local.get("virusTotalApiKey")).virusTotalApiKey ?? "";
   console.log(`Using VirusTotal API Key: ${apiKey}`);
 
 
-  // const options = {method: 'GET', headers: {accept: 'application/json', 'x-apikey': 'apiKey'}};
   const options = {
     method: "GET",
     headers: {
@@ -1092,8 +927,6 @@ async function checkCachedUrlReport(urlId) {
       return data;
     })
     .catch(err => console.error(err));
-
-  // return res;
 }
 
 async function requestURL_Rescan(urlId) {
@@ -1171,24 +1004,6 @@ async function getRecentUrlReport(urlToFetch) {
   throw new Error(`VirusTotal scan did not complete after ${MAX_ATTEMPTS} attempts.`);
 }
 
-// async function getRecentUrlReport(urlToFetch){
-//   const apiKey = (await browser.storage.local.get("virusTotalApiKey")).virusTotalApiKey ?? "";
-
-//   const options = {
-//     method: 'GET',
-//     headers: {
-//       accept: 'application/json',
-//       'x-apikey': apiKey
-//     }
-//   };
-
-//   return fetch(`${urlToFetch}`, options)
-//     .then(res => {return res.json()})
-//     .then(data => {console.log("Full JSON Output:\n" + JSON.stringify(data, null, 2));
-//   return data;})
-//     .catch(err => console.error(err));
-// }
-
 function updateScanResultsUI(JSON, urlId) {
   // URL Object uses `last_analysis_stats`, Analysis Object uses `stats`.
   // Extract whichever one exists into a single `stats` variable.
@@ -1200,12 +1015,6 @@ function updateScanResultsUI(JSON, urlId) {
   const harmlessCount = stats.harmless;
   const undetectedCount = stats.undetected;
   const timeoutCount = stats.timeout;
-
-  // maliciousCount = JSON.data.attributes.last_analysis_stats.malicious;
-  // suspiciousCount = JSON.data.attributes.last_analysis_stats.suspicious;
-  // harmlessCount = JSON.data.attributes.last_analysis_stats.harmless;
-  // undetectedCount = JSON.data.attributes.last_analysis_stats.undetected;
-  // timeoutCount = JSON.data.attributes.last_analysis_stats.timeout;
 
   statMalicious.textContent = maliciousCount;
   statSuspicious.textContent = suspiciousCount;
@@ -1230,101 +1039,12 @@ function updateScanResultsUI(JSON, urlId) {
   }
 
   scanResultStatus.textContent = ` ${maliciousCount} / 92 engines detected threats.`
-  // scanResultDetails.classList.remove("hidden");
 
   btnOpenVT.href = `https://www.virustotal.com/gui/url/${urlId}`;
   // btnOpenVT.href = JSON.data.links.self; // DO NOT USE THIS LINK, IT IS THE API LINK, NOT THE GUI LINK. The GUI link is the one above.
   btnOpenVT.classList.remove("hidden");
-  // scanResultDetails.classList.remove("hidden");
 
 }
-
-
-// const options = {
-//   method: 'GET',
-//   headers: {
-//     accept: 'application/json',
-//     'x-apikey': 'cdde9b4bba2526230859ac68dc6669534cd881f6823690efe36600b8ea1f51fc'
-//   }
-// };
-// 
-// fetch('https://www.virustotal.com/api/v3/analyses/u-3641c5f2274c5471278ab5bf1df6d1858d8aa392d85c51301abed2122a3c634f-a13c403b', options)
-//   .then(res => res.json())
-//   .then(res => console.log(res))
-//   .catch(err => console.error(err));
-
-// https://www.virustotal.com/api/v3/analyses/u-3641c5f2274c5471278ab5bf1df6d1858d8aa392d85c51301abed2122a3c634f-a13c403b
-// https://www.virustotal.com/api/v3/analyses/u-3641c5f2274c5471278ab5bf1df6d1858d8aa392d85c51301abed2122a3c634f-a13c403b
-
-// {
-//   "data": {
-//     "type": "analysis",
-//     "id": "u-3641c5f2274c5471278ab5bf1df6d1858d8aa392d85c51301abed2122a3c634f-a13c403b",
-//     "links": {
-//       "self": "https://www.virustotal.com/api/v3/analyses/u-3641c5f2274c5471278ab5bf1df6d1858d8aa392d85c51301abed2122a3c634f-a13c403b"
-//     }
-//   }
-// }
-
-
-// // Modern Industry Standard Syntax
-// async function checkCachedUrlReport(targetUrl) {
-//   const urlId = getBase64CachedUrlId(targetUrl);
-//   const apiKey = (await browser.storage.local.get("virusTotalApiKey")).virusTotalApiKey ?? "";
-
-//   const options = {
-//     method: "GET",
-//     headers: {
-//       "accept": "application/json",
-//       "x-apikey": apiKey
-//     }
-//   };
-
-//   const response = await fetch(`https://www.virustotal.com/api/v3/urls/${urlId}`, options);
-//   const data = await response.json();
-
-//   console.log("Data inside checkCachedUrlReport:", data);
-//   return data; //  Return data to the caller!
-// }
-
-
-
-// async function checkCachedUrlReport(targetUrl) {
-
-//   // 4. Use BACKTICKS (`) for URL string interpolation
-//   const response = await fetch(`https://www.virustotal.com/api/v3/urls/${urlId}`, options);
-
-//   if (!response.ok) {
-//     throw new Error(`HTTP Error! Status: ${response.status}`);
-//   }
-
-//   // 5. Parse JSON data and return it to the caller
-//   const data = await response.json();
-//   return data;
-// }
-
-// await browser.storage.local.set({
-//     // extensionEnabled: toggleEnabled.checked,
-//     // accessibleThemes: toggleAccess.checked,
-//     contextMenuMode,
-//     virusTotalApiKey
-// });
-
-// const options = {
-//   method: 'POST',
-//   headers: {
-//     'x-apikey': 'cdde9b4bba2526230859ac68dc6669534cd881f6823690efe36600b8ea1f51fc',
-//     accept: 'application/json',
-//     'content-type': 'application/x-www-form-urlencoded'
-//   },
-//   body: new URLSearchParams({url: targetUrl})
-// };
-
-// fetch('https://www.virustotal.com/api/v3/urls/${urlId}', options)
-//   .then(res => res.json())
-//   .then(res => console.log(res))
-//   .catch(err => console.error(err));
-
 
 // ── New folder input: create folder on Enter key ────────────────────
 // The "keydown" event fires every time a key is pressed while the input
@@ -1336,8 +1056,6 @@ function updateScanResultsUI(JSON, urlId) {
 
 // For the error message, we can use alert() to show a simple popup message <- More intrusive as user needs to manually close it.
 // or we can replace the placeholder text in the input field with an error message.
-
-
 
 newFolderInput.addEventListener("keydown", async (e) => {
   if (e.key === "Enter") {

@@ -1,5 +1,3 @@
-// <!-- /* AI-Review complete */ --> 
-
 /**
  * picker.js — Runs inside the folder picker popup window.
  *
@@ -57,53 +55,6 @@ pickerSearch.addEventListener("input", () => {
         btn.style.display = matches ? "" : "none";
     });
 });
-
-// ── Apply Shared Theme ──────────────────────────────────────────────
-// async function restoreThemeState() {
-//   try {
-//     // const states = await browser.storage.local.get(["themeState", "accessibleThemes"]);
-//     const states = await browser.storage.local.get(["themeState"]);
-//     const state = states.themeState;
-//     // const useAccessibleThemes = states.accessibleThemes === true;
-
-//     // if (!state) return; // Use fallback CSS defaults
-
-//     // if (state.isLightMode ) {
-//     //   document.body.classList.add("light-mode");
-//     // }
-
-//     // const isLight = state.isLightMode;
-
-//     // if (!state) return; // Use fallback CSS defaults
-
-//     if (state.isDarkMode ) {
-//       document.body.classList.add("dark-mode");
-//     }
-
-//     const isDark = state.isDarkMode;
-
-
-//     // let palettes;
-//     // if (useAccessibleThemes) {
-//     //   palettes = isLight ? LIGHT_ACCESSIBLE_PALETTES : DARK_ACCESSIBLE_PALETTES;
-//     // } else {
-//     //   palettes = isLight ? LIGHT_PALETTES : DARK_PALETTES;
-//     // }
-
-//     // const index = isLight ? (state.lightPaletteIndex ?? 0) : (state.darkPaletteIndex ?? 0);
-//     // const palette = palettes[index];
-
-//     // Apply inline vars to the body
-//     // Object.entries(palette).forEach(([key, value]) => {
-//     //   if (key.startsWith("--")) {
-//     //     document.body.style.setProperty(key, value);
-//     //   }
-//     // });
-
-//   } catch (err) {
-//     console.error("[picker] Failed to restore theme state:", err);
-//   }
-// }
 
 // ── Load folders from storage and build the UI ──────────────────────
 async function loadFolders() {
@@ -233,7 +184,6 @@ async function createNewFolderAndSave(folderName) {
 
 // ── Init ────────────────────────────────────────────────────────────
 async function init() {
-    // await restoreThemeState();
     await loadFolders();
 
     // The background script can pass ?action=new_folder to tell the picker

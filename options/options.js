@@ -1,8 +1,3 @@
-/* AI-Review complete */
-
-
-
-
 /**
  * options.js — Runs on the extension's settings / preferences page.
  *
@@ -23,8 +18,6 @@
  */
 
 // ── DOM references ──────────────────────────────────────────────────
-// const toggleEnabled = document.getElementById("toggle-enabled");
-// const toggleAccess  = document.getElementById("toggle-accessibility");
 const savedUrlInput = document.getElementById("saved-url");
 const btnSave = document.getElementById("btn-save");
 const saveStatusEl = document.getElementById("save-status");
@@ -43,8 +36,6 @@ async function loadSettings() {
         // key string) and returns an object with those keys and their values.
         // If a key doesn't exist yet, it simply won't be in the result.
         const data = await browser.storage.local.get([
-            // "extensionEnabled",
-            // "accessibleThemes",
             "savedUrl",
             "contextMenuMode",
             "virustotalApiKey"
@@ -82,8 +73,6 @@ btnSave.addEventListener("click", async () => {
         const virusTotalApiKey = apiKeyInput.value.trim();
 
         await browser.storage.local.set({
-            // extensionEnabled: toggleEnabled.checked,
-            // accessibleThemes: toggleAccess.checked,
             contextMenuMode,
             virusTotalApiKey
         });
