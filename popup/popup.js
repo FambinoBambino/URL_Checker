@@ -140,14 +140,31 @@ async function saveFolderData() {
   }
 }
 
-async function persistScanDataForUrl(link, scanData) {
+// async function persistScanDataForUrl(link, scanData) { // Need to update here to save only the stats of the JSOn and then date.now() for time of scan.
+//   const folder = folderData.folders.find((f) => f.id === activeFolderId);
+//   if (!folder) return;
+
+//   const entry = folder.urls.find((e) => e.link === link);
+//   if (entry) {
+//     entry.scanData = scanData;
+//     await saveFolderData();
+//   }
+// }
+
+async function persistStatsDataForUrl(link, statsData) {
   const folder = folderData.folders.find((f) => f.id === activeFolderId);
   if (!folder) return;
 
   const entry = folder.urls.find((e) => e.link === link);
   if (entry) {
-    entry.scanData = scanData;
+    // entry.scanData = scanData;
+    entry.statsData = statsData;
+    console.log(`Persisting stats data for ${link}:`, entry.statsData);
+    entry.lastScanTime = Date.now(); // Store the current timestamp
+    console.log(`Persisting last scan time for ${link}:`, entry.lastScanTime);
     await saveFolderData();
+    console.log(`Persisting stats data for ${link}:`, entry.statsData);
+    console.log(`Persisting last scan time for ${link}:`, entry.lastScanTime);
   }
 }
 
@@ -257,7 +274,6 @@ function renderSidebar() {
   // Update the "active" state on the General folder button.
   // classList.toggle(class, force) adds the class if force is true,
   // removes it if force is false.
-  // generalFolderBtn.classList.toggle("active", activeFolderId === "__general__"); // Might need to add re-store for active folder so that it persists across popup opens
 
   // Create a button for each user-created folder
   folderData.folders.forEach((folder) => {
@@ -406,10 +422,6 @@ async function deleteFolder(folderId) {
     activeFolderId = null; // No folders left
   }
   await browser.storage.local.set({ activeFolderId });
-  // Need to save active folder to storage here
-
-  // // Array.push() adds the new folder to the END of the array
-  // folderData.folders.push(newFolder);
 
   renderSidebar();
   renderUrlList();
@@ -567,7 +579,12 @@ function renderUrlList() {
     rescanBtn.addEventListener("click", async (e) => {
       try {
         const itemContainer = e.currentTarget.closest(".url-item");
+        console.log(`line 582 - itemContainer:`, itemContainer.dataset );
+        // await scanAndPersistFolderUrl(itemContainer.dataset.url, itemContainer); // Need to make changes here
+        // console.log(`Last scan time updated to: ${itemContainer.dataset.lastScanTime}`);
         await scanAndPersistFolderUrl(itemContainer.dataset.url, itemContainer);
+        // console.log(`Re-scan completed for ${itemContainer.dataset.url}`);
+        // console.log(`Last scan time updated to: ${itemContainer.dataset.lastScanTime}`);
       } catch (err) {
         console.error("Failed to fetch report:", err);
       }
@@ -577,32 +594,77 @@ function renderUrlList() {
     item.appendChild(detailsPanel);
     urlListEl.appendChild(item);
 
-    if (urlEntry.scanData) {
-      updateFolderUrlItemUI(item, urlEntry.scanData, getBase64CachedUrlId(urlLink));
+    // if (urlEntry.scanData) { // Need to make changes here as well
+    //   updateFolderUrlItemUI(item, urlEntry.scanData, getBase64CachedUrlId(urlLink));
+    // }
+    console.log(`line 599: urlEntry for ${urlLink}:`, urlEntry);
+    console.log(`statsData for ${urlLink}:`, urlEntry.statsData);
+    console.log(`Last scan time for ${urlLink}:`, urlEntry.lastScanTime);
+    if (urlEntry.statsData) {
+      updateFolderUrlItemUI(item, urlEntry.statsData, getBase64CachedUrlId(urlLink));
     }
   });
 }
 
-async function scanAndPersistFolderUrl(urlLink, itemContainer) {
-  const urlId = getBase64CachedUrlId(urlLink);
-  const latestAnalysisJSON = await checkCachedUrlReport(urlId);
-  let scanData;
+// async function scanAndPersistFolderUrl(urlLink, itemContainer) { // Need to make changes here as well
+//   const urlId = getBase64CachedUrlId(urlLink);
+//   const latestAnalysisJSON = await checkCachedUrlReport(urlId);
+//   let scanData;
 
-  if (getHoursAgo(latestAnalysisJSON.data.attributes.last_analysis_date) < 12) {
-    scanData = latestAnalysisJSON;
-  } else {
-    const requestJSON = await requestURL_Rescan(urlId);
-    scanData = await getRecentUrlReport(requestJSON.data.links.self);
+//   if (getHoursAgo(latestAnalysisJSON.data.attributes.last_analysis_date) < 12) {
+//     scanData = latestAnalysisJSON;
+//   } else {
+//     const requestJSON = await requestURL_Rescan(urlId);
+//     scanData = await getRecentUrlReport(requestJSON.data.links.self);
+//   }
+
+//   updateFolderUrlItemUI(itemContainer, scanData, urlId);
+//   await persistScanDataForUrl(urlLink, scanData);
+// }
+
+async function scanAndPersistFolderUrl(urlLink, itemContainer) { // Need to make changes here as well
+  const folder = folderData.folders.find((f) => f.id === activeFolderId);
+  if (!folder) return;
+
+  const entry = folder.urls.find((e) => e.link === urlLink);
+
+  console.log(Math.floor(entry.lastScanTime / 1000));
+  // Math.floor(Date.now() / 1000)
+  console.log(getHoursAgo(Math.floor(entry.lastScanTime / 1000)));
+  // console.log(getHoursAgo(lastScanTime) < 12);
+  console.log(entry.lastScanTime && getHoursAgo(Math.floor(entry.lastScanTime / 1000)) < 12);
+
+  if (entry.lastScanTime && getHoursAgo(Math.floor(entry.lastScanTime / 1000)) < 12) {
+    console.log(`Skipping scan for ${urlLink} as it was scanned less than 12 hours ago.`);
   }
+  else 
+    {
+    const urlId = getBase64CachedUrlId(urlLink);
+    const latestAnalysisJSON = await checkCachedUrlReport(urlId);
+    let statsData;
 
-  updateFolderUrlItemUI(itemContainer, scanData, urlId);
-  await persistScanDataForUrl(urlLink, scanData);
+    if (getHoursAgo(latestAnalysisJSON.data.attributes.last_analysis_date) < 12) {
+      // statsData = latestAnalysisJSON;
+      statsData = latestAnalysisJSON.data.attributes.last_analysis_stats;
+    } else {
+      const requestJSON = await requestURL_Rescan(urlId);
+      // statsData = await getRecentUrlReport(requestJSON.data.links.self);
+      tempJSON = await getRecentUrlReport(requestJSON.data.links.self);
+      statsData = tempJSON.data.attributes.stats;
+    }
+    // console.log("Returned stats JSON:", statsData);
+
+    updateFolderUrlItemUI(itemContainer, statsData, urlId);
+    await persistStatsDataForUrl(urlLink, statsData);
+    console.log(`Scan time updated to: ${entry.lastScanTime}`);
+  }
 }
 
-function updateFolderUrlItemUI(itemContainer, scanData, urlId) {
-  const stats = scanData.data.attributes.last_analysis_stats ?? scanData.data.attributes.stats;
-  const maliciousCount = stats.malicious;
-  const suspiciousCount = stats.suspicious;
+
+function updateFolderUrlItemUI(itemContainer, statsData, urlId) { // Need to make changes here as well
+  // const stats = scanData.data.attributes.last_analysis_stats ?? scanData.data.attributes.stats;
+  const maliciousCount = statsData.malicious;
+  const suspiciousCount = statsData.suspicious;
 
   // 1. Scoped sub-element selectors
   const badge = itemContainer.querySelector(".url-verdict-badge");
@@ -630,11 +692,11 @@ function updateFolderUrlItemUI(itemContainer, scanData, urlId) {
   openVtBtn.classList.remove("hidden");
 
   // 4. Update stats breakdown
-  itemContainer.querySelector(".stat-malicious").textContent = stats.malicious;
-  itemContainer.querySelector(".stat-suspicious").textContent = stats.suspicious;
-  itemContainer.querySelector(".stat-undetected").textContent = stats.undetected;
-  itemContainer.querySelector(".stat-harmless").textContent = stats.harmless;
-  itemContainer.querySelector(".stat-timeout").textContent = stats.timeout;
+  itemContainer.querySelector(".stat-malicious").textContent = statsData.malicious;
+  itemContainer.querySelector(".stat-suspicious").textContent = statsData.suspicious;
+  itemContainer.querySelector(".stat-undetected").textContent = statsData.undetected;
+  itemContainer.querySelector(".stat-harmless").textContent = statsData.harmless;
+  itemContainer.querySelector(".stat-timeout").textContent = statsData.timeout;
 }
 
 /**
@@ -869,13 +931,13 @@ btnURL_Check.addEventListener("click", async () => {
 
     if (getHoursAgo(latestAnalysisJSON.data.attributes.last_analysis_date) < 12) {
       console.log(`The cached report is recent (less than 12 hours old). Last analysis was at ${getLocalTime(latestAnalysisJSON.data.attributes.last_analysis_date)}.`);
-      updateScanResultsUI(latestAnalysisJSON, urlId);
+      updateScanResultsUI(latestAnalysisJSON.data.attributes.last_analysis_stats , urlId);
     }
     else {
       console.log(`The cached report is older than 12 hours. Last analysis was at ${getLocalTime(latestAnalysisJSON.data.attributes.last_analysis_date)}.`);
       const requestJSON = await requestURL_Rescan(urlId);
       const recentJSON = await getRecentUrlReport(requestJSON.data.links.self);
-      updateScanResultsUI(recentJSON, urlId);
+      updateScanResultsUI(recentJSON.data.attributes.stats , urlId);
     }
 
 
@@ -943,6 +1005,10 @@ function getHoursAgo(unixTimestamp) {
   const currentSeconds = Math.floor(Date.now() / 1000);
   const difference = currentSeconds - unixTimestamp;
 
+  console.log(`Current Unix timestamp: ${currentSeconds}`);
+  console.log(`Last analysis Unix timestamp: ${unixTimestamp}`);
+  console.log(`Difference in seconds: ${difference}`);
+  console.log(`Difference in minutes: ${Math.floor(difference / 60)}`);
   console.log(`Difference in hours: ${Math.floor(difference / 3600)}`);
   return Math.floor(difference / 3600);
 }
@@ -970,6 +1036,15 @@ async function checkCachedUrlReport(urlId) {
       return data;
     })
     .catch(err => console.error(err));
+// const stats = JSON.data.attributes.last_analysis_stats ?? JSON.data.attributes.stats;
+  // return fetch(`https://www.virustotal.com/api/v3/urls/${urlId}`, options)
+  //   .then(res => { return res.json().data.attributes.last_analysis_stats })
+  //   .then(data => {
+  //     console.log("Full JSON Output:\n" + JSON.stringify(data, null, 2));
+  //     return data;
+  //   })
+  //   .catch(err => console.error(err));
+  // Can't do this way since we need the stats and last_analysis_date to determine if we need to re-analyze the URL or not. The stats alone won't tell us that.
 }
 
 async function requestURL_Rescan(urlId) {
@@ -990,6 +1065,14 @@ async function requestURL_Rescan(urlId) {
       return data;
     })
     .catch(err => console.error(err));
+
+  // return fetch(`https://www.virustotal.com/api/v3/urls/${urlId}/analyse`, options)
+  //   .then(res => { return res.json().data.attributes.stats })
+  //   .then(data => {
+  //     console.log("Full JSON Output:\n" + JSON.stringify(data, null, 2));
+  //     return data;
+  //   })
+  //   .catch(err => console.error(err));
 }
 
 async function getRecentUrlReport(urlToFetch) {
@@ -1047,17 +1130,18 @@ async function getRecentUrlReport(urlToFetch) {
   throw new Error(`VirusTotal scan did not complete after ${MAX_ATTEMPTS} attempts.`);
 }
 
-function updateScanResultsUI(JSON, urlId) {
+function updateScanResultsUI(statsData, urlId) { // Need to make changes here as well
   // URL Object uses `last_analysis_stats`, Analysis Object uses `stats`.
   // Extract whichever one exists into a single `stats` variable.
-  const stats = JSON.data.attributes.last_analysis_stats ?? JSON.data.attributes.stats;
+  // const stats = JSON.data.attributes.last_analysis_stats ?? JSON.data.attributes.stats;
+  console.log("Returned stats JSON:", statsData);
 
   // Now all field accesses are clean and identical regardless of source
-  const maliciousCount = stats.malicious;
-  const suspiciousCount = stats.suspicious;
-  const harmlessCount = stats.harmless;
-  const undetectedCount = stats.undetected;
-  const timeoutCount = stats.timeout;
+  const maliciousCount = statsData.malicious;
+  const suspiciousCount = statsData.suspicious;
+  const harmlessCount = statsData.harmless;
+  const undetectedCount = statsData.undetected;
+  const timeoutCount = statsData.timeout;
 
   statMalicious.textContent = maliciousCount;
   statSuspicious.textContent = suspiciousCount;

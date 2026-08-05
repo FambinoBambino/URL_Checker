@@ -117,7 +117,8 @@ async function saveUrlToFolder(folderId) {
         // Array.includes() checks if the array already contains the value.
         // We don't want to save duplicate URLs in the same folder.
         if (!folder.urls.some((entry) => entry.link === urlToSave)) {
-            folder.urls.push({ link: urlToSave, scanData: null });
+            // folder.urls.push({ link: urlToSave, scanData: null });
+            folder.urls.push({ link: urlToSave, statsData: null, lastScanTime: null });
 
             // Write the updated folderData back to storage.
             await browser.storage.local.set({ folderData });
@@ -168,7 +169,8 @@ async function createNewFolderAndSave(folderName) {
             id: "f-" + Date.now(),
             name: folderName,
             // Pre-seed this folder's URL list with the current URL
-            urls: [{ link: urlToSave, scanData: null }]
+            // urls: [{ link: urlToSave, scanData: null }]
+            urls: [{ link: urlToSave, statsData: null, lastScanTime: null }]
         };
 
         data.folders.push(newFolder);
