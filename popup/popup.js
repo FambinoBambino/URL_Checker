@@ -498,6 +498,12 @@ function renderUrlList() {
         <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
       </svg>
     `;
+    // Need to replace with tabler--refresh icon
+
+    // Middle-Left: Last scan time text
+    const lastScanTimeEl = document.createElement("span");
+    lastScanTimeEl.className = "url-last-scan-time";
+    lastScanTimeEl.textContent = formatTimeAgo(urlEntry.lastScanTime);
 
     // Middle: Clickable truncated URL link
     const linkEl = document.createElement("a");
@@ -537,6 +543,7 @@ function renderUrlList() {
     actionsGroup.appendChild(deleteBtn);
 
     mainRow.appendChild(rescanBtn);
+    mainRow.appendChild(lastScanTimeEl);
     mainRow.appendChild(linkEl);
     mainRow.appendChild(actionsGroup);
 
@@ -579,12 +586,7 @@ function renderUrlList() {
     rescanBtn.addEventListener("click", async (e) => {
       try {
         const itemContainer = e.currentTarget.closest(".url-item");
-        console.log(`line 582 - itemContainer:`, itemContainer.dataset );
-        // await scanAndPersistFolderUrl(itemContainer.dataset.url, itemContainer); // Need to make changes here
-        // console.log(`Last scan time updated to: ${itemContainer.dataset.lastScanTime}`);
         await scanAndPersistFolderUrl(itemContainer.dataset.url, itemContainer);
-        // console.log(`Re-scan completed for ${itemContainer.dataset.url}`);
-        // console.log(`Last scan time updated to: ${itemContainer.dataset.lastScanTime}`);
       } catch (err) {
         console.error("Failed to fetch report:", err);
       }
@@ -594,75 +596,99 @@ function renderUrlList() {
     item.appendChild(detailsPanel);
     urlListEl.appendChild(item);
 
-    // if (urlEntry.scanData) { // Need to make changes here as well
-    //   updateFolderUrlItemUI(item, urlEntry.scanData, getBase64CachedUrlId(urlLink));
-    // }
-    console.log(`line 599: urlEntry for ${urlLink}:`, urlEntry);
-    console.log(`statsData for ${urlLink}:`, urlEntry.statsData);
-    console.log(`Last scan time for ${urlLink}:`, urlEntry.lastScanTime);
     if (urlEntry.statsData) {
-      updateFolderUrlItemUI(item, urlEntry.statsData, getBase64CachedUrlId(urlLink));
+      updateFolderUrlItemUI(item, urlEntry.statsData, getBase64CachedUrlId(urlLink), urlEntry.lastScanTime);
     }
   });
 }
 
-// async function scanAndPersistFolderUrl(urlLink, itemContainer) { // Need to make changes here as well
-//   const urlId = getBase64CachedUrlId(urlLink);
-//   const latestAnalysisJSON = await checkCachedUrlReport(urlId);
-//   let scanData;
+/**
+ * Format a Unix timestamp (milliseconds or seconds) into a human-readable time-ago string.
+ *
+ * Rules:
+ *  - Under 1 minute: "Just now"
+ *  - Under 60 minutes: "Xm ago"
+ *  - Under 24 hours: "Xh ago"
+ *  - Under 7 days: "Xd ago"
+ *  - 7+ days (1 week+): "1+ week ago"
+ *  - Missing / Unscanned: "-"
+ *
+ * @param {number|null} timestampMs - Unix timestamp
+ * @returns {string} Formatted human-readable string
+ */
+function formatTimeAgo(timestampMs) {
+  if (!timestampMs) return "-";
 
-//   if (getHoursAgo(latestAnalysisJSON.data.attributes.last_analysis_date) < 12) {
-//     scanData = latestAnalysisJSON;
-//   } else {
-//     const requestJSON = await requestURL_Rescan(urlId);
-//     scanData = await getRecentUrlReport(requestJSON.data.links.self);
-//   }
+  const timestamp = timestampMs < 100000000000 ? timestampMs * 1000 : timestampMs;
+  const elapsedMs = Date.now() - timestamp;
+  if (elapsedMs < 0) return "Just now";
 
-//   updateFolderUrlItemUI(itemContainer, scanData, urlId);
-//   await persistScanDataForUrl(urlLink, scanData);
-// }
+  const elapsedMins = Math.floor(elapsedMs / (1000 * 60));
+  const elapsedHours = Math.floor(elapsedMs / (1000 * 60 * 60));
+  const elapsedDays = Math.floor(elapsedMs / (1000 * 60 * 60 * 24));
 
-async function scanAndPersistFolderUrl(urlLink, itemContainer) { // Need to make changes here as well
+  if (elapsedMins < 1) {
+    return "Just now";
+  } else if (elapsedMins < 60) {
+    return `${elapsedMins} mins ago`;
+  } else if (elapsedHours < 24) {
+    return `${elapsedHours} hours ago`;
+  } else if (elapsedDays < 7) {
+    return `${elapsedDays} days ago`;
+  } else {
+    return "1+ week ago";
+  }
+}
+
+/**
+ * Perform VirusTotal scan (or cache lookup) for a folder URL and persist results.
+ *
+ * @param {string} urlLink - The URL string to analyze
+ * @param {HTMLElement} itemContainer - The .url-item DOM container box
+ */
+async function scanAndPersistFolderUrl(urlLink, itemContainer) {
   const folder = folderData.folders.find((f) => f.id === activeFolderId);
   if (!folder) return;
 
   const entry = folder.urls.find((e) => e.link === urlLink);
+  if (!entry) return;
 
-  console.log(Math.floor(entry.lastScanTime / 1000));
-  // Math.floor(Date.now() / 1000)
-  console.log(getHoursAgo(Math.floor(entry.lastScanTime / 1000)));
-  // console.log(getHoursAgo(lastScanTime) < 12);
-  console.log(entry.lastScanTime && getHoursAgo(Math.floor(entry.lastScanTime / 1000)) < 12);
-
+  // If scanned within the last 12 hours, skip new VirusTotal API requests
   if (entry.lastScanTime && getHoursAgo(Math.floor(entry.lastScanTime / 1000)) < 12) {
     console.log(`Skipping scan for ${urlLink} as it was scanned less than 12 hours ago.`);
+    return;
   }
-  else 
-    {
-    const urlId = getBase64CachedUrlId(urlLink);
-    const latestAnalysisJSON = await checkCachedUrlReport(urlId);
-    let statsData;
 
-    if (getHoursAgo(latestAnalysisJSON.data.attributes.last_analysis_date) < 12) {
-      // statsData = latestAnalysisJSON;
-      statsData = latestAnalysisJSON.data.attributes.last_analysis_stats;
-    } else {
-      const requestJSON = await requestURL_Rescan(urlId);
-      // statsData = await getRecentUrlReport(requestJSON.data.links.self);
-      tempJSON = await getRecentUrlReport(requestJSON.data.links.self);
-      statsData = tempJSON.data.attributes.stats;
-    }
-    // console.log("Returned stats JSON:", statsData);
+  const urlId = getBase64CachedUrlId(urlLink);
+  const latestAnalysisJSON = await checkCachedUrlReport(urlId);
+  let statsData;
 
-    updateFolderUrlItemUI(itemContainer, statsData, urlId);
-    await persistStatsDataForUrl(urlLink, statsData);
-    console.log(`Scan time updated to: ${entry.lastScanTime}`);
+  if (getHoursAgo(latestAnalysisJSON.data.attributes.last_analysis_date) < 12) {
+    statsData = latestAnalysisJSON.data.attributes.last_analysis_stats;
+  } else {
+    const requestJSON = await requestURL_Rescan(urlId);
+    const tempJSON = await getRecentUrlReport(requestJSON.data.links.self);
+    statsData = tempJSON.data.attributes.stats;
   }
+
+  // Update in-memory entry and persist to storage
+  entry.statsData = statsData;
+  entry.lastScanTime = Date.now();
+  await saveFolderData();
+
+  // Update UI with new stats and scan time
+  updateFolderUrlItemUI(itemContainer, statsData, urlId, entry.lastScanTime);
 }
 
-
-function updateFolderUrlItemUI(itemContainer, statsData, urlId) { // Need to make changes here as well
-  // const stats = scanData.data.attributes.last_analysis_stats ?? scanData.data.attributes.stats;
+/**
+ * Update the UI elements inside a URL container box with stats and scan time.
+ *
+ * @param {HTMLElement} itemContainer - The .url-item DOM element
+ * @param {Object} statsData - Object containing malicious, suspicious, undetected, harmless, timeout counts
+ * @param {string} urlId - Base64 encoded URL identifier for VirusTotal
+ * @param {number|null} lastScanTime - Unix timestamp of the last scan
+ */
+function updateFolderUrlItemUI(itemContainer, statsData, urlId, lastScanTime = null) {
   const maliciousCount = statsData.malicious;
   const suspiciousCount = statsData.suspicious;
 
@@ -670,6 +696,7 @@ function updateFolderUrlItemUI(itemContainer, statsData, urlId) { // Need to mak
   const badge = itemContainer.querySelector(".url-verdict-badge");
   const statusEl = itemContainer.querySelector(".url-verdict-status");
   const openVtBtn = itemContainer.querySelector(".url-btn-open-vt");
+  const lastScanEl = itemContainer.querySelector(".url-last-scan-time");
 
   // 2. Set verdict container color
   itemContainer.classList.remove("verdict-green", "verdict-yellow", "verdict-red");
@@ -686,10 +713,14 @@ function updateFolderUrlItemUI(itemContainer, statsData, urlId) { // Need to mak
     badge.classList.add("green");
   }
 
-  // 3. Set text and external link
+  // 3. Set text, external link, and last scan time
   statusEl.textContent = `${maliciousCount} / 92 engines detected threats`;
   openVtBtn.href = `https://www.virustotal.com/gui/url/${urlId}`;
   openVtBtn.classList.remove("hidden");
+
+  if (lastScanEl && lastScanTime) {
+    lastScanEl.textContent = formatTimeAgo(lastScanTime);
+  }
 
   // 4. Update stats breakdown
   itemContainer.querySelector(".stat-malicious").textContent = statsData.malicious;
@@ -931,13 +962,13 @@ btnURL_Check.addEventListener("click", async () => {
 
     if (getHoursAgo(latestAnalysisJSON.data.attributes.last_analysis_date) < 12) {
       console.log(`The cached report is recent (less than 12 hours old). Last analysis was at ${getLocalTime(latestAnalysisJSON.data.attributes.last_analysis_date)}.`);
-      updateScanResultsUI(latestAnalysisJSON.data.attributes.last_analysis_stats , urlId);
+      updateScanResultsUI(latestAnalysisJSON.data.attributes.last_analysis_stats, urlId);
     }
     else {
       console.log(`The cached report is older than 12 hours. Last analysis was at ${getLocalTime(latestAnalysisJSON.data.attributes.last_analysis_date)}.`);
       const requestJSON = await requestURL_Rescan(urlId);
       const recentJSON = await getRecentUrlReport(requestJSON.data.links.self);
-      updateScanResultsUI(recentJSON.data.attributes.stats , urlId);
+      updateScanResultsUI(recentJSON.data.attributes.stats, urlId);
     }
 
 
@@ -1036,7 +1067,7 @@ async function checkCachedUrlReport(urlId) {
       return data;
     })
     .catch(err => console.error(err));
-// const stats = JSON.data.attributes.last_analysis_stats ?? JSON.data.attributes.stats;
+  // const stats = JSON.data.attributes.last_analysis_stats ?? JSON.data.attributes.stats;
   // return fetch(`https://www.virustotal.com/api/v3/urls/${urlId}`, options)
   //   .then(res => { return res.json().data.attributes.last_analysis_stats })
   //   .then(data => {

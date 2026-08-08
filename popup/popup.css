@@ -3,10 +3,12 @@ body {
     width: 800px;
     height: 600px;
 
-    display: flex; /* The body becomes a flex container, all children are thus flex items */
-    flex-direction: column; /* Stacks children vertically: top bar, then content area */
+    display: flex;
+    /* The body becomes a flex container, all children are thus flex items */
+    flex-direction: column;
+    /* Stacks children vertically: top bar, then content area */
     margin: 0;
-    box-sizing: border-box;  
+    box-sizing: border-box;
     /* Apparently, makes width and height include padding and border, so the popup doesn't exceed 800x600 */
 }
 
@@ -189,7 +191,7 @@ body {
     /* Don't let the sidebar shrink */
     display: flex;
     flex-direction: column;
-    border-right: 1px solid rgba(255,255,255,0.06);
+    border-right: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 /* The scrollable part of the sidebar (between General and New Folder) */
@@ -440,9 +442,22 @@ body {
     transform: rotate(180deg) scale(0.95);
 }
 
+/* Last scan time badge (between re-scan button and URL link) */
+.url-last-scan-time {
+    font-size: 11px;
+    font-weight: 500;
+    color: #333;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.dark-mode .url-last-scan-time {
+    color: #eee;
+}
+
 /* Middle: Truncated URL link (Centered with fixed cutoff point) */
 .url-item-link {
-    max-width: 280px;
+    max-width: 240px;
     font-size: 13px;
     font-weight: 500;
     color: #333;
@@ -606,7 +621,8 @@ body {
 /* ==========================================================================
    UTILITY CLASSES
    ========================================================================== */
-.hidden { /* used for the light/dark mode toggle */
+.hidden {
+    /* used for the light/dark mode toggle */
     display: none !important;
 }
 
@@ -773,9 +789,17 @@ body {
     flex-shrink: 0;
 }
 
-.verdict-badge.green { background-color: #2ecc71; }
-.verdict-badge.yellow { background-color: #f39c12; }
-.verdict-badge.red { background-color: #e74c3c; }
+.verdict-badge.green {
+    background-color: #2ecc71;
+}
+
+.verdict-badge.yellow {
+    background-color: #f39c12;
+}
+
+.verdict-badge.red {
+    background-color: #e74c3c;
+}
 
 /* Open in VirusTotal Button */
 .btn-open-vt {
@@ -835,6 +859,14 @@ body {
     font-weight: 600;
 }
 
-.stat-val.malicious { color: #e74c3c; }
-.stat-val.suspicious { color: #f39c12; }
-.stat-val.harmless { color: #2ecc71; }
+.stat-val.malicious {
+    color: #e74c3c;
+}
+
+.stat-val.suspicious {
+    color: #f39c12;
+}
+
+.stat-val.harmless {
+    color: #2ecc71;
+}
