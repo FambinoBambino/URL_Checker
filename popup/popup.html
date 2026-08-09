@@ -92,10 +92,14 @@
                 </div>
             </aside>
 
-            <!-- Main panel — shows the selected folder's name and URLs -->
+            <!-- Main panel — shows folder URL filter tabs and URLs -->
             <div class="main-panel">
-                <!-- <h2 id="folder-heading" class="folder-heading">General</h2> -->
-                <h2 id="folder-heading" class="folder-heading"></h2>
+                <div id="folder-header-tabs" class="folder-header-tabs">
+                    <button class="folder-tab-btn active" data-filter="all">All</button>
+                    <button class="folder-tab-btn filter-green" data-filter="green">Green</button>
+                    <button class="folder-tab-btn filter-yellow" data-filter="yellow">Yellow</button>
+                    <button class="folder-tab-btn filter-red" data-filter="red">Red</button>
+                </div>
                 <div id="url-list" class="url-list">
                     <!-- URL items will be rendered here by JS -->
                     <p id="empty-folder-msg" class="empty-folder-msg">

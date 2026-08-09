@@ -45,7 +45,7 @@ const btnSettings = document.getElementById("btn-settings");
 const folderSidebarList = document.getElementById("folder-sidebar-list");
 const newFolderInput = document.getElementById("new-folder-input");
 const btnNewFolder = document.getElementById("btn-new-folder");
-const folderHeading = document.getElementById("folder-heading");
+const folderHeaderTabs = document.getElementById("folder-header-tabs");
 const urlListEl = document.getElementById("url-list");
 const emptyFolderMsg = document.getElementById("empty-folder-msg");
 const btnURL_Check = document.getElementById("btn-submit-url-check");
@@ -72,13 +72,10 @@ const statTimeout = document.getElementById("stat-timeout");
    This state is re-populated from storage every time the popup opens.
    ========================================================================== */
 
-// The currently selected folder ID. "__general__" is a special value
-// meaning the virtual General folder (union of all URLs).
-// let activeFolderId = "__general__";
 let activeFolderId = null;
-// I can likely get rid of the general folder and set activeFolder to null for first time users.
-// Then, when they create a new folder, it will auto select that folder as active and of course we can implement persistent 
-// storage for the last active folder so that when the user opens the popup again, it will open to the last active folder. 
+
+// Current URL filter for folder view: "all", "green", "yellow", or "red"
+let currentFolderFilter = "all";
 
 // The full folder data object loaded from storage.
 // This is kept in sync with storage via loadFolderData() and saveFolderData().
@@ -93,8 +90,25 @@ async function init() {
   await loadFolderData();
   await restoreThemeState();
   await restoreActiveTab();
+  setupFilterTabListeners();
   renderSidebar();
   renderUrlList();
+}
+
+/**
+ * Attach click listeners to the folder filter header tabs (All, Green, Yellow, Red).
+ */
+function setupFilterTabListeners() {
+  if (!folderHeaderTabs) return;
+  const tabBtns = folderHeaderTabs.querySelectorAll(".folder-tab-btn");
+  tabBtns.forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      currentFolderFilter = e.currentTarget.dataset.filter;
+      tabBtns.forEach((b) => b.classList.remove("active"));
+      e.currentTarget.classList.add("active");
+      renderUrlList();
+    });
+  });
 }
 
 /* ==========================================================================
@@ -447,22 +461,6 @@ function renderUrlList() {
   // Clear the URL list
   urlListEl.innerHTML = "";
 
-  let urls = [];
-  // let headingText = "General";
-  let headingText = "";
-
-  // ── Specific folder: find it and show its URLs ──
-  // Array.find() searches for the first matching element
-  const folder = folderData.folders.find((f) => f.id === activeFolderId);
-  if (folder) {
-    urls = folder.urls;
-    headingText = folder.name;
-  }
-
-  // Update the heading at the top of the main panel
-  folderHeading.textContent = headingText;
-
-  // If there are no URLs, show the empty message
   if (folderData.folders.length === 0) {
     const msg = document.createElement("p");
     msg.className = "empty-folder-msg";
@@ -470,10 +468,41 @@ function renderUrlList() {
     urlListEl.appendChild(msg);
     return;
   }
-  else if (urls.length === 0) {
+
+  const folder = folderData.folders.find((f) => f.id === activeFolderId);
+  const allFolderUrls = folder ? folder.urls : [];
+
+  if (allFolderUrls.length === 0) {
     const msg = document.createElement("p");
     msg.className = "empty-folder-msg";
     msg.textContent = "No URLs saved yet.";
+    urlListEl.appendChild(msg);
+    return;
+  }
+
+  // Filter URLs based on current active tab ("all", "green", "yellow", "red")
+  let urls = allFolderUrls;
+  if (currentFolderFilter !== "all") {
+    urls = allFolderUrls.filter((urlEntry) => {
+      const stats = urlEntry.statsData;
+      if (!stats) return false;
+
+      const isRed = stats.malicious > 0;
+      const isYellow = !isRed && stats.suspicious > 0;
+      const isGreen = !isRed && !isYellow;
+
+      if (currentFolderFilter === "green") return isGreen;
+      if (currentFolderFilter === "yellow") return isYellow;
+      if (currentFolderFilter === "red") return isRed;
+      return true;
+    });
+  }
+
+  if (urls.length === 0) {
+    const msg = document.createElement("p");
+    msg.className = "empty-folder-msg";
+    const filterLabel = currentFolderFilter.charAt(0).toUpperCase() + currentFolderFilter.slice(1);
+    msg.textContent = `No ${filterLabel} URLs in this folder.`;
     urlListEl.appendChild(msg);
     return;
   }

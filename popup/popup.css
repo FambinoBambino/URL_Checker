@@ -349,13 +349,100 @@ body {
     overflow: hidden;
 }
 
-/* Folder name heading at the top of the main panel */
-.folder-heading {
-    padding: 14px 18px 10px;
-    font-size: 16px;
-    font-weight: 700;
+/* Folder Filter Header Tabs at the top of main-panel */
+.folder-header-tabs {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    background-color: transparent;
     flex-shrink: 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.dark-mode .folder-header-tabs {
+    border-bottom-color: rgba(255, 255, 255, 0.06);
+}
+
+.folder-tab-btn {
+    padding: 5px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    background: transparent;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    color: #555;
+}
+
+.dark-mode .folder-tab-btn {
+    color: #aaa;
+}
+
+/* Default "All" tab hover/active */
+.folder-tab-btn[data-filter="all"]:hover {
+    background: rgba(0, 0, 0, 0.05);
+    color: #111;
+}
+
+.dark-mode .folder-tab-btn[data-filter="all"]:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+}
+
+.folder-tab-btn[data-filter="all"].active {
+    background: rgba(0, 0, 0, 0.08);
+    color: #000;
+    border-color: rgba(0, 0, 0, 0.2);
+}
+
+.dark-mode .folder-tab-btn[data-filter="all"].active {
+    background: rgba(255, 255, 255, 0.12);
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Green tab */
+.folder-tab-btn.filter-green {
+    color: #2ecc71;
+}
+
+.folder-tab-btn.filter-green:hover {
+    background: rgba(46, 204, 113, 0.12);
+}
+
+.folder-tab-btn.filter-green.active {
+    background: rgba(46, 204, 113, 0.2);
+    border-color: #2ecc71;
+}
+
+/* Yellow tab */
+.folder-tab-btn.filter-yellow {
+    color: #f39c12;
+}
+
+.folder-tab-btn.filter-yellow:hover {
+    background: rgba(243, 156, 18, 0.12);
+}
+
+.folder-tab-btn.filter-yellow.active {
+    background: rgba(243, 156, 18, 0.2);
+    border-color: #f39c12;
+}
+
+/* Red tab */
+.folder-tab-btn.filter-red {
+    color: #e74c3c;
+}
+
+.folder-tab-btn.filter-red:hover {
+    background: rgba(231, 76, 60, 0.12);
+}
+
+.folder-tab-btn.filter-red.active {
+    background: rgba(231, 76, 60, 0.2);
+    border-color: #e74c3c;
 }
 
 /* ── URL list ──
