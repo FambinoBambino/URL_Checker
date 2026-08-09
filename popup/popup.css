@@ -103,32 +103,169 @@ body {
      appears ABOVE other content (like the sidebar and URL list). */
     z-index: 100;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+    /* Solid background so results are legible (light mode default) */
+    background-color: #f5f5f5;
+    color: #111;
+}
+
+.dark-mode .search-results {
+    background-color: #1e1e2e;
+    color: #e0e0e0;
+    border-color: rgba(255, 255, 255, 0.12);
 }
 
 .search-result-item {
     padding: 8px 12px;
     cursor: pointer;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
     transition: background 0.12s ease;
+    color: inherit;
+}
+
+.dark-mode .search-result-item {
+    border-bottom-color: rgba(255, 255, 255, 0.06);
 }
 
 .search-result-item:last-child {
     border-bottom: none;
 }
 
+.search-result-item:hover {
+    background: rgba(108, 99, 255, 0.08);
+}
+
 /* The URL text in a search result */
 .search-result-url {
     font-size: 13px;
+    color: #222;
     /* Truncate long URLs with "…" */
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
+.dark-mode .search-result-url {
+    color: #ddd;
+}
+
 /* The folder name shown below the URL in a search result */
 .search-result-folder {
     font-size: 11px;
+    color: #666;
     margin-top: 2px;
+}
+
+.dark-mode .search-result-folder {
+    color: #999;
+}
+
+/* ==========================================================================
+   TOAST NOTIFICATIONS
+   Temporary pop-up messages anchored to the bottom of the popup.
+   ========================================================================== */
+.toast-container {
+    position: fixed;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    z-index: 9999;
+    pointer-events: none;
+    width: calc(100% - 32px);
+    max-width: 720px;
+}
+
+.toast {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 11px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    line-height: 1.45;
+    pointer-events: all;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+    animation: toast-in 0.2s ease;
+    max-width: 100%;
+}
+
+.toast.toast-error {
+    background: #2d1010;
+    border: 1px solid rgba(231, 76, 60, 0.45);
+    color: #f5c6c6;
+}
+
+.toast.toast-warning {
+    background: #2a1f08;
+    border: 1px solid rgba(243, 156, 18, 0.45);
+    color: #f5e0aa;
+}
+
+.toast.toast-info {
+    background: #0d1a2a;
+    border: 1px solid rgba(108, 99, 255, 0.45);
+    color: #c5c0ff;
+}
+
+.toast-icon {
+    font-size: 15px;
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+
+.toast-body {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    flex: 1;
+}
+
+.toast-title {
+    font-weight: 700;
+    font-size: 13px;
+}
+
+.toast-message {
+    font-size: 12px;
+    opacity: 0.9;
+}
+
+.toast-message a {
+    color: inherit;
+    font-weight: 600;
+    text-decoration: underline;
+    opacity: 1;
+}
+
+.toast-close {
+    background: transparent;
+    border: none;
+    color: inherit;
+    opacity: 0.6;
+    cursor: pointer;
+    font-size: 15px;
+    padding: 0 2px;
+    flex-shrink: 0;
+    line-height: 1;
+    align-self: flex-start;
+}
+
+.toast-close:hover {
+    opacity: 1;
+}
+
+@keyframes toast-in {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 /* ── Utility buttons (right side) ── */

@@ -18,7 +18,7 @@
  */
 
 // ── DOM references ──────────────────────────────────────────────────
-const savedUrlInput = document.getElementById("saved-url");
+
 const btnSave = document.getElementById("btn-save");
 const saveStatusEl = document.getElementById("save-status");
 const apiKeyInput = document.getElementById("virustotal-api-key");
@@ -36,16 +36,10 @@ async function loadSettings() {
         // key string) and returns an object with those keys and their values.
         // If a key doesn't exist yet, it simply won't be in the result.
         const data = await browser.storage.local.get([
-            "savedUrl",
             "contextMenuMode",
             "virustotalApiKey"
         ]);
 
-        // The "??" operator (nullish coalescing) provides a default value
-        // if the stored value is null or undefined.
-        // toggleEnabled.checked = data.extensionEnabled ?? true;
-        // toggleAccess.checked = data.accessibleThemes ?? false;
-        savedUrlInput.value = data.savedUrl ?? "";
         apiKeyInput.value = data.virusTotalApiKey ?? "";
 
         // Set the correct radio button to "checked" based on the saved value.

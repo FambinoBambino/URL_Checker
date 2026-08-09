@@ -61,9 +61,79 @@ const statSuspicious = document.getElementById("stat-suspicious");
 const statUndetected = document.getElementById("stat-undetected");
 const statHarmless = document.getElementById("stat-harmless");
 const statTimeout = document.getElementById("stat-timeout");
+const toastContainer = document.getElementById("toast-container");
 //classList.add() or classList.remove() can be used to show/hide elements by toggling the "hidden" class.
 // textContent can be used to update the text inside an element, e.g., scanResultStatus.textContent = "New status text".
 // href can be used to set the URL for a link, e.g., btnOpenVT.href = "https://www.virustotal.com/gui/url/...";
+
+/* ==========================================================================
+   TOAST NOTIFICATIONS
+   showToast() creates a temporary message at the bottom of the popup.
+
+   @param {string} title   — Bold headline text (e.g. "No API Key Set")
+   @param {string} message — Body text; can contain an <a> tag for a link
+   @param {"error"|"warning"|"info"} type — Controls the color scheme
+   @param {number} duration — Milliseconds before auto-dismiss (0 = manual only)
+   ========================================================================== */
+function showToast(title, message, type = "error", duration = 6000) {
+  if (!toastContainer) return;
+
+  const toast = document.createElement("div");
+  toast.className = `toast toast-${type}`;
+
+  // Icon varies by type
+  const icons = { error: "⚠", warning: "⚡", info: "ℹ" };
+  const icon = icons[type] ?? "ℹ";
+
+  toast.innerHTML = `
+    <span class="toast-icon">${icon}</span>
+    <div class="toast-body">
+      <span class="toast-title">${title}</span>
+      <span class="toast-message">${message}</span>
+    </div>
+    <button class="toast-close" title="Dismiss">✕</button>
+  `;
+
+  // Dismiss button removes this individual toast
+  toast.querySelector(".toast-close").addEventListener("click", () => toast.remove());
+
+  toastContainer.appendChild(toast);
+
+  // Auto-dismiss after `duration` ms (unless duration is 0)
+  if (duration > 0) {
+    setTimeout(() => toast.remove(), duration);
+  }
+}
+
+/* ==========================================================================
+   API KEY GUARD
+   getApiKey() reads the stored VirusTotal API key.
+   If no key has been saved yet, it fires a toast explaining the problem
+   and returns null — callers should check for null and abort the scan.
+   ========================================================================== */
+async function getApiKey() {
+  const apiKey = (await browser.storage.local.get("virusTotalApiKey")).virusTotalApiKey ?? "";
+  if (!apiKey) {
+    showToast(
+      "No API Key Set",
+      `A VirusTotal API key is required to scan URLs. ` +
+      `<a href="#" id="toast-open-settings">Open Settings</a> to add your key, ` +
+      `or <a href="https://docs.virustotal.com/docs/please-give-me-an-api-key" target="_blank" rel="noopener noreferrer">get a free key here</a>.`,
+      "error",
+      0 // stays until dismissed, because action is required
+    );
+    // Wire the inline "Open Settings" link inside the toast
+    const settingsLink = toastContainer.querySelector("#toast-open-settings");
+    if (settingsLink) {
+      settingsLink.addEventListener("click", (e) => {
+        e.preventDefault();
+        browser.runtime.openOptionsPage();
+      });
+    }
+    return null;
+  }
+  return apiKey;
+}
 
 /* ==========================================================================
    STATE
@@ -690,6 +760,7 @@ async function scanAndPersistFolderUrl(urlLink, itemContainer) {
 
   const urlId = getBase64CachedUrlId(urlLink);
   const latestAnalysisJSON = await checkCachedUrlReport(urlId);
+  if (!latestAnalysisJSON) return; // no API key — toast already shown
   let statsData;
 
   if (getHoursAgo(latestAnalysisJSON.data.attributes.last_analysis_date) < 12) {
@@ -985,6 +1056,7 @@ btnURL_Check.addEventListener("click", async () => {
     console.log("Base64 URL ID:", urlId);
 
     const latestAnalysisJSON = await checkCachedUrlReport(urlId);
+    if (!latestAnalysisJSON) return; // no API key — toast already shown
     console.log("Returned JSON:", latestAnalysisJSON);
     console.log("Latest Analysis Date:", getLocalTime(latestAnalysisJSON.data.attributes.last_analysis_date));
     getSecondsAgo(latestAnalysisJSON.data.attributes.last_analysis_date);
@@ -1075,19 +1147,16 @@ function getHoursAgo(unixTimestamp) {
 
 
 async function checkCachedUrlReport(urlId) {
-  // This function actually uses the API for retrieving the cached analsysis, not just the ID.
-  const apiKey = (await browser.storage.local.get("virusTotalApiKey")).virusTotalApiKey ?? "";
-  console.log(`Using VirusTotal API Key: ${apiKey}`);
-
+  const apiKey = await getApiKey();
+  if (!apiKey) return null;
 
   const options = {
     method: "GET",
     headers: {
       "accept": "application/json",
-      "x-apikey": apiKey // Passed as variable, not 'apiKey' string
+      "x-apikey": apiKey
     }
   };
-
 
   return fetch(`https://www.virustotal.com/api/v3/urls/${urlId}`, options)
     .then(res => { return res.json() })
@@ -1096,19 +1165,11 @@ async function checkCachedUrlReport(urlId) {
       return data;
     })
     .catch(err => console.error(err));
-  // const stats = JSON.data.attributes.last_analysis_stats ?? JSON.data.attributes.stats;
-  // return fetch(`https://www.virustotal.com/api/v3/urls/${urlId}`, options)
-  //   .then(res => { return res.json().data.attributes.last_analysis_stats })
-  //   .then(data => {
-  //     console.log("Full JSON Output:\n" + JSON.stringify(data, null, 2));
-  //     return data;
-  //   })
-  //   .catch(err => console.error(err));
-  // Can't do this way since we need the stats and last_analysis_date to determine if we need to re-analyze the URL or not. The stats alone won't tell us that.
 }
 
 async function requestURL_Rescan(urlId) {
-  const apiKey = (await browser.storage.local.get("virusTotalApiKey")).virusTotalApiKey ?? "";
+  const apiKey = await getApiKey();
+  if (!apiKey) return null;
 
   const options = {
     method: 'POST',
@@ -1125,19 +1186,13 @@ async function requestURL_Rescan(urlId) {
       return data;
     })
     .catch(err => console.error(err));
-
-  // return fetch(`https://www.virustotal.com/api/v3/urls/${urlId}/analyse`, options)
-  //   .then(res => { return res.json().data.attributes.stats })
-  //   .then(data => {
-  //     console.log("Full JSON Output:\n" + JSON.stringify(data, null, 2));
-  //     return data;
-  //   })
-  //   .catch(err => console.error(err));
 }
 
 async function getRecentUrlReport(urlToFetch) {
-  const apiKey = (await browser.storage.local.get("virusTotalApiKey")).virusTotalApiKey ?? "";
+  const apiKey = await getApiKey();
+  if (!apiKey) return null;
 
+  // --- Polling Configuration ---
   const options = {
     method: "GET",
     headers: {
