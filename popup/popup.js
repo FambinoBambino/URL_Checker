@@ -243,12 +243,12 @@ async function persistStatsDataForUrl(link, statsData) {
   if (entry) {
     // entry.scanData = scanData;
     entry.statsData = statsData;
-    console.log(`Persisting stats data for ${link}:`, entry.statsData);
+    // console.log(`Persisting stats data for ${link}:`, entry.statsData);
     entry.lastScanTime = Date.now(); // Store the current timestamp
-    console.log(`Persisting last scan time for ${link}:`, entry.lastScanTime);
+    // console.log(`Persisting last scan time for ${link}:`, entry.lastScanTime);
     await saveFolderData();
-    console.log(`Persisting stats data for ${link}:`, entry.statsData);
-    console.log(`Persisting last scan time for ${link}:`, entry.lastScanTime);
+    // console.log(`Persisting stats data for ${link}:`, entry.statsData);
+    // console.log(`Persisting last scan time for ${link}:`, entry.lastScanTime);
   }
 }
 
@@ -754,7 +754,12 @@ async function scanAndPersistFolderUrl(urlLink, itemContainer) {
 
   // If scanned within the last 12 hours, skip new VirusTotal API requests
   if (entry.lastScanTime && getHoursAgo(Math.floor(entry.lastScanTime / 1000)) < 12) {
-    console.log(`Skipping scan for ${urlLink} as it was scanned less than 12 hours ago.`);
+    // console.log(`Skipping scan for ${urlLink} as it was scanned less than 12 hours ago.`);
+    showToast(
+          "Skipping Scan",
+          `${urlLink} was scanned less than 12 hours ago.`,
+          "info"
+        ); // The duration will be 6 seconds by default, so the user will see it briefly.
     return;
   }
 
@@ -1050,15 +1055,15 @@ btnNewFolder.addEventListener("click", () => {
 btnURL_Check.addEventListener("click", async () => {
   try {
     const urlToCheck = urlInput.value.trim();
-    console.log("URL to check:", urlToCheck);
+    // console.log("URL to check:", urlToCheck);
     // const urlToCheck = "https://example.com/page";
     const urlId = getBase64CachedUrlId(urlToCheck);
-    console.log("Base64 URL ID:", urlId);
+    // console.log("Base64 URL ID:", urlId);
 
     const latestAnalysisJSON = await checkCachedUrlReport(urlId);
     if (!latestAnalysisJSON) return; // no API key — toast already shown
     console.log("Returned JSON:", latestAnalysisJSON);
-    console.log("Latest Analysis Date:", getLocalTime(latestAnalysisJSON.data.attributes.last_analysis_date));
+    // console.log("Latest Analysis Date:", getLocalTime(latestAnalysisJSON.data.attributes.last_analysis_date));
     getSecondsAgo(latestAnalysisJSON.data.attributes.last_analysis_date);
 
     if (getHoursAgo(latestAnalysisJSON.data.attributes.last_analysis_date) < 12) {
@@ -1127,21 +1132,21 @@ function getSecondsAgo(unixTimestamp) {
   const currentSeconds = Math.floor(Date.now() / 1000);
   const difference = currentSeconds - unixTimestamp;
 
-  console.log(`Difference in seconds: ${difference}`);
-  console.log(`Difference in minutes: ${Math.floor(difference / 60)}`);
-  console.log(`Difference in hours: ${Math.floor(difference / 3600)}`);
-  console.log(`Difference in days: ${Math.floor(difference / 86400)}`);
+  // console.log(`Difference in seconds: ${difference}`);
+  // console.log(`Difference in minutes: ${Math.floor(difference / 60)}`);
+  // console.log(`Difference in hours: ${Math.floor(difference / 3600)}`);
+  // console.log(`Difference in days: ${Math.floor(difference / 86400)}`);
 }
 
 function getHoursAgo(unixTimestamp) {
   const currentSeconds = Math.floor(Date.now() / 1000);
   const difference = currentSeconds - unixTimestamp;
 
-  console.log(`Current Unix timestamp: ${currentSeconds}`);
-  console.log(`Last analysis Unix timestamp: ${unixTimestamp}`);
-  console.log(`Difference in seconds: ${difference}`);
-  console.log(`Difference in minutes: ${Math.floor(difference / 60)}`);
-  console.log(`Difference in hours: ${Math.floor(difference / 3600)}`);
+  // console.log(`Current Unix timestamp: ${currentSeconds}`);
+  // console.log(`Last analysis Unix timestamp: ${unixTimestamp}`);
+  // console.log(`Difference in seconds: ${difference}`);
+  // console.log(`Difference in minutes: ${Math.floor(difference / 60)}`);
+  // console.log(`Difference in hours: ${Math.floor(difference / 3600)}`);
   return Math.floor(difference / 3600);
 }
 
@@ -1219,29 +1224,45 @@ async function getRecentUrlReport(urlToFetch) {
   const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-    console.log(`Polling analysis status... (Attempt ${attempt}/${MAX_ATTEMPTS})`);
+    // console.log(`Polling analysis status... (Attempt ${attempt}/${MAX_ATTEMPTS})`);
 
     const response = await fetch(urlToFetch, options);
     const data = await response.json();
 
     // data.attributes.status will be one of: "queued", "in-progress", or "completed"
     const status = data?.data?.attributes?.status;
-    console.log(`Analysis status: ${status}`);
+    // console.log(`Analysis status: ${status}`);
 
     if (status === "completed") {
-      console.log("Analysis complete! Full JSON:\n" + JSON.stringify(data, null, 2));
+      // console.log("Analysis complete! Full JSON:\n" + JSON.stringify(data, null, 2));
+      showToast(
+            "Poll Complete",
+            `Analysis completed after ${attempt} attempt(s).`,
+            "info"
+          );
       return data;
     }
 
     // If not completed and we still have attempts remaining, wait before retrying
     if (attempt < MAX_ATTEMPTS) {
-      console.log(`Scan not ready yet. Waiting ${POLL_INTERVAL_MS / 1000}s before next check...`);
+      // console.log(`Scan not ready yet. Waiting ${POLL_INTERVAL_MS / 1000}s before next check...`);
+      showToast(
+            "Poll Status",
+            `(Attempt ${attempt}/${MAX_ATTEMPTS}) | Status: ${status} | Waiting ${POLL_INTERVAL_MS / 1000}s before next check...`,
+            "info",
+            POLL_INTERVAL_MS // stays until the next poll, so user can see the status update
+          );
       await wait(POLL_INTERVAL_MS);
     }
   }
 
   // If we exit the loop without getting "completed", throw an error
   // so the catch block in the button listener can handle it gracefully.
+  showToast(
+        "Scan Timeout",
+        `VirusTotal scan did not complete after ${MAX_ATTEMPTS} attempts.`,
+        "error"
+      );
   throw new Error(`VirusTotal scan did not complete after ${MAX_ATTEMPTS} attempts.`);
 }
 
@@ -1249,7 +1270,7 @@ function updateScanResultsUI(statsData, urlId) { // Need to make changes here as
   // URL Object uses `last_analysis_stats`, Analysis Object uses `stats`.
   // Extract whichever one exists into a single `stats` variable.
   // const stats = JSON.data.attributes.last_analysis_stats ?? JSON.data.attributes.stats;
-  console.log("Returned stats JSON:", statsData);
+  // console.log("Returned stats JSON:", statsData);
 
   // Now all field accesses are clean and identical regardless of source
   const maliciousCount = statsData.malicious;
@@ -1374,7 +1395,13 @@ btnSettings.addEventListener("click", () => {
 
 // ── Help button — placeholder ───────────────────────────────────────
 btnHelp.addEventListener("click", () => {
-  console.log("[popup] Help button clicked — no action defined yet.");
+  // console.log("[popup] Help button clicked — no action defined yet.");
+  showToast(
+   "No action defined",
+   `This button currently has no action defined. Check the extension's page in the extension store where you installed it for more information.`,
+   "info",
+   10000    
+);
 });
 
 /* ==========================================================================
@@ -1399,7 +1426,7 @@ browser.storage.onChanged.addListener((changes, areaName) => {
     folderData = changes.folderData.newValue || { folders: [] };
     renderSidebar();
     renderUrlList();
-    console.log("[popup] Folder data updated from storage change.");
+    // console.log("[popup] Folder data updated from storage change.");
   }
 });
 
