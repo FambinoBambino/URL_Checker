@@ -35,7 +35,7 @@ browser.runtime.onInstalled.addListener((details) => {
     //   "install"  → first time the user installed the extension
     //   "update"   → the extension was updated to a new version
     //   "browser_update" → Firefox itself was updated
-    console.log("[background] Extension installed/updated:", details.reason);
+    // console.log("[background] Extension installed/updated:", details.reason);
 
     if (details.reason === "install") {
         // Set default preferences in storage.
@@ -51,9 +51,9 @@ browser.runtime.onInstalled.addListener((details) => {
             // contextMenuMode controls how the right-click menu works:
             //   "simple"  → one menu item, opens the picker popup
             //   "submenu" → parent item that expands into child items for quick selection
-            contextMenuMode: "simple",
+            contextMenuMode: "simple"
         });
-        console.log("[background] Default settings saved.");
+        // console.log("[background] Default settings saved.");
     }
 
     // Build the context menus after install/update
@@ -106,7 +106,6 @@ async function buildContextMenu() {
         "contextMenuMode",
         "folderData",
     ]);
-
     const mode = data.contextMenuMode || "simple";
     const folders = data.folderData?.folders || [];
 
@@ -171,9 +170,9 @@ async function buildContextMenu() {
             contexts: ["page", "link"],
         });
 
-        console.log(
-            `[background] Submenu built: ${displayedFolders.length} folders + Search`
-        );
+        // console.log(
+        //     `[background] Submenu built: ${displayedFolders.length} folders + Search`
+        // );
         // console.log(
         //     `[background] Submenu built: General + ${displayedFolders.length} folders + Search`
         // );
@@ -193,7 +192,7 @@ async function buildContextMenu() {
                         browser.runtime.lastError.message
                     );
                 } else {
-                    console.log("[background] Simple menu item created.");
+                    // console.log("[background] Simple menu item created.");
                 }
             }
         );
@@ -228,14 +227,14 @@ if (menusAPI) {
             info.menuItemId === "save-url-to-folder" ||
             info.menuItemId === "save-url-search"
         ) {
-            console.log("[background] Opening picker for URL:", urlToSave);
+            // console.log("[background] Opening picker for URL:", urlToSave);
             openPickerWindow(urlToSave);
             return;
         }
 
         // ── "Create New Folder…" → open picker and auto-prompt ──
         if (info.menuItemId === "save-url-new-folder") {
-            console.log("[background] Opening picker to new folder for:", urlToSave);
+            // console.log("[background] Opening picker to new folder for:", urlToSave);
             openPickerWindow(urlToSave, "new_folder");
             return;
         }
@@ -260,10 +259,10 @@ if (menusAPI) {
             // Extract the folder ID by removing the "save-to-folder-" prefix.
             // String.replace() swaps the first occurrence of the prefix with "".
             const folderId = info.menuItemId.replace("save-to-folder-", "");
-            console.log(
-                `[background] Saving to folder ${folderId}:`,
-                urlToSave
-            );
+            // console.log(
+            //     `[background] Saving to folder ${folderId}:`,
+            //     urlToSave
+            // );
             saveUrlToFolder(folderId, urlToSave);
             return;
         }
@@ -334,9 +333,9 @@ async function saveUrlToFolder(folderId, url) {
             // folder.urls.push({ link: url, scanData: null });
             folder.urls.push({ link: url, statsData: null, lastScanTime: null });
             await browser.storage.local.set({ folderData });
-            console.log("[background] URL saved to folder:", folder.name);
+            // console.log("[background] URL saved to folder:", folder.name);
         } else {
-            console.log("[background] URL already in folder:", folder.name);
+            // console.log("[background] URL already in folder:", folder.name);
         }
     } catch (err) {
         console.error("[background] Failed to save URL to folder:", err);
@@ -357,7 +356,7 @@ async function saveUrlToFolder(folderId, url) {
 //   sendResponse → (callback style) call this to reply synchronously;
 //                   OR return a Promise to reply asynchronously
 browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    console.log("[background] Message received:", message, "from:", sender);
+    // console.log("[background] Message received:", message, "from:", sender);
 
     // Rebuild context menus when the user changes the menu mode in settings.
     if (message.action === "rebuildMenus") {
@@ -388,7 +387,7 @@ browser.storage.onChanged.addListener((changes, areaName) => {
     if (areaName !== "local") return;
 
     if (changes.folderData || changes.contextMenuMode) {
-        console.log("[background] Storage changed, rebuilding menus.");
+        // console.log("[background] Storage changed, rebuilding menus.");
         buildContextMenu();
     }
 });
