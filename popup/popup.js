@@ -85,17 +85,39 @@ function showToast(title, message, type = "error", duration = 6000) {
   const icons = { error: "⚠", warning: "⚡", info: "ℹ" };
   const icon = icons[type] ?? "ℹ";
 
-  toast.innerHTML = `
-    <span class="toast-icon">${icon}</span>
-    <div class="toast-body">
-      <span class="toast-title">${title}</span>
-      <span class="toast-message">${message}</span>
-    </div>
-    <button class="toast-close" title="Dismiss">✕</button>
-  `;
+  const iconSpan = document.createElement("span");
+  iconSpan.className = "toast-icon";
+  iconSpan.textContent = icon;
 
-  // Dismiss button removes this individual toast
-  toast.querySelector(".toast-close").addEventListener("click", () => toast.remove());
+  const bodyDiv = document.createElement("div");
+  bodyDiv.className = "toast-body";
+
+  const titleSpan = document.createElement("span");
+  titleSpan.className = "toast-title";
+  titleSpan.textContent = title;
+
+  const messageSpan = document.createElement("span");
+  messageSpan.className = "toast-message";
+  if (typeof message === "string" && message.includes("<a")) {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(message, "text/html");
+    messageSpan.append(...doc.body.childNodes);
+  } else {
+    messageSpan.textContent = message;
+  }
+
+  bodyDiv.appendChild(titleSpan);
+  bodyDiv.appendChild(messageSpan);
+
+  const closeBtn = document.createElement("button");
+  closeBtn.className = "toast-close";
+  closeBtn.title = "Dismiss";
+  closeBtn.textContent = "✕";
+  closeBtn.addEventListener("click", () => toast.remove());
+
+  toast.appendChild(iconSpan);
+  toast.appendChild(bodyDiv);
+  toast.appendChild(closeBtn);
 
   toastContainer.appendChild(toast);
 
@@ -744,27 +766,37 @@ async function scanAndPersistFolderUrl(urlLink, itemContainer) {
 
   // If scanned within the last 12 hours, skip new VirusTotal API requests
   if (entry.lastScanTime && getHoursAgo(Math.floor(entry.lastScanTime / 1000)) < 12) {
-    // console.log(`Skipping scan for ${urlLink} as it was scanned less than 12 hours ago.`);
     showToast(
       "Skipping Scan",
       `${urlLink} was scanned less than 12 hours ago.`,
       "info"
-    ); // The duration will be 6 seconds by default, so the user will see it briefly.
+    );
     return;
   }
 
   const urlId = getBase64CachedUrlId(urlLink);
   const latestAnalysisJSON = await checkCachedUrlReport(urlId);
-  if (!latestAnalysisJSON) return; // no API key — toast already shown
+  if (!latestAnalysisJSON) return; // Error toast already shown
+
   let statsData;
 
-  if (getHoursAgo(latestAnalysisJSON.data.attributes.last_analysis_date) < 12) {
+  if (latestAnalysisJSON.notFound) {
+    const requestJSON = await requestURL_Rescan(urlId);
+    if (!requestJSON || !requestJSON.data?.links?.self) return;
+    const tempJSON = await getRecentUrlReport(requestJSON.data.links.self);
+    if (!tempJSON || !tempJSON.data?.attributes?.stats) return;
+    statsData = tempJSON.data.attributes.stats;
+  } else if (latestAnalysisJSON.data?.attributes?.last_analysis_date && getHoursAgo(latestAnalysisJSON.data.attributes.last_analysis_date) < 12) {
     statsData = latestAnalysisJSON.data.attributes.last_analysis_stats;
   } else {
     const requestJSON = await requestURL_Rescan(urlId);
+    if (!requestJSON || !requestJSON.data?.links?.self) return;
     const tempJSON = await getRecentUrlReport(requestJSON.data.links.self);
+    if (!tempJSON || !tempJSON.data?.attributes?.stats) return;
     statsData = tempJSON.data.attributes.stats;
   }
+
+  if (!statsData) return;
 
   // Update in-memory entry and persist to storage
   entry.statsData = statsData;
@@ -1045,29 +1077,36 @@ btnNewFolder.addEventListener("click", () => {
 btnURL_Check.addEventListener("click", async () => {
   try {
     const urlToCheck = urlInput.value.trim();
-    // console.log("URL to check:", urlToCheck);
-    // const urlToCheck = "https://example.com/page";
+    if (!urlToCheck) {
+      showToast("Input Required", "Please enter a valid URL to check.", "warning", 4000);
+      return;
+    }
     const urlId = getBase64CachedUrlId(urlToCheck);
-    // console.log("Base64 URL ID:", urlId);
 
     const latestAnalysisJSON = await checkCachedUrlReport(urlId);
-    if (!latestAnalysisJSON) return; // no API key — toast already shown
-    console.log("Returned JSON:", latestAnalysisJSON);
-    // console.log("Latest Analysis Date:", getLocalTime(latestAnalysisJSON.data.attributes.last_analysis_date));
-    getSecondsAgo(latestAnalysisJSON.data.attributes.last_analysis_date);
+    if (!latestAnalysisJSON) return; // Error toast already shown
 
-    if (getHoursAgo(latestAnalysisJSON.data.attributes.last_analysis_date) < 12) {
-      console.log(`The cached report is recent (less than 12 hours old). Last analysis was at ${getLocalTime(latestAnalysisJSON.data.attributes.last_analysis_date)}.`);
-      updateScanResultsUI(latestAnalysisJSON.data.attributes.last_analysis_stats, urlId);
-    }
-    else {
-      console.log(`The cached report is older than 12 hours. Last analysis was at ${getLocalTime(latestAnalysisJSON.data.attributes.last_analysis_date)}.`);
+    if (latestAnalysisJSON.notFound) {
+      console.log("URL not in VirusTotal cache. Requesting fresh analysis...");
       const requestJSON = await requestURL_Rescan(urlId);
+      if (!requestJSON || !requestJSON.data?.links?.self) return;
       const recentJSON = await getRecentUrlReport(requestJSON.data.links.self);
+      if (!recentJSON || !recentJSON.data?.attributes?.stats) return;
+      updateScanResultsUI(recentJSON.data.attributes.stats, urlId);
+      return;
+    }
+
+    if (latestAnalysisJSON.data?.attributes?.last_analysis_date && getHoursAgo(latestAnalysisJSON.data.attributes.last_analysis_date) < 12) {
+      console.log(`The cached report is recent (less than 12 hours old).`);
+      updateScanResultsUI(latestAnalysisJSON.data.attributes.last_analysis_stats, urlId);
+    } else {
+      console.log(`The cached report is older than 12 hours. Requesting rescan...`);
+      const requestJSON = await requestURL_Rescan(urlId);
+      if (!requestJSON || !requestJSON.data?.links?.self) return;
+      const recentJSON = await getRecentUrlReport(requestJSON.data.links.self);
+      if (!recentJSON || !recentJSON.data?.attributes?.stats) return;
       updateScanResultsUI(recentJSON.data.attributes.stats, urlId);
     }
-
-
   } catch (err) {
     console.error("Failed to fetch report:", err);
   }
@@ -1141,53 +1180,77 @@ function getHoursAgo(unixTimestamp) {
 }
 
 
+/**
+ * Centralized fetch helper for VirusTotal API requests with graceful error handling.
+ * Handles 429 Rate Limiting, 401/403 Invalid API Keys, 404 Cache Misses, 5xx Server Outages, and Network drops.
+ *
+ * @param {string} url - API Endpoint URL
+ * @param {object} options - Fetch options object
+ * @returns {Promise<object|null>} JSON response object, or null on handled error
+ */
+async function fetchVirusTotal(url, options) {
+  try {
+    const response = await fetch(url, options);
+
+    if (response.status === 429) {
+      showToast(
+        "Rate Limit Exceeded",
+        "VirusTotal free API rate limit reached (4 requests/min max). Please wait a minute before retrying.",
+        "warning",
+        8000
+      );
+      return null;
+    }
+
+    if (response.status === 401 || response.status === 403) {
+      showToast(
+        "Invalid API Key",
+        "Your VirusTotal API key was rejected. <a href='#' id='toast-open-settings'>Open Settings</a> to verify your key.",
+        "error",
+        0
+      );
+      const settingsLink = toastContainer.querySelector("#toast-open-settings");
+      if (settingsLink) {
+        settingsLink.addEventListener("click", (e) => {
+          e.preventDefault();
+          browser.runtime.openOptionsPage();
+        });
+      }
+      return null;
+    }
+
+    if (response.status === 404) {
+      return { notFound: true };
+    }
+
+    if (!response.ok) {
+      showToast(
+        "VirusTotal Service Error",
+        `VirusTotal servers returned HTTP status ${response.status}. Please try again later.`,
+        "error",
+        7000
+      );
+      return null;
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (err) {
+    console.error("[VirusTotal API Fetch Error]:", err);
+    showToast(
+      "Network Error",
+      "Unable to connect to VirusTotal. Please check your internet connection.",
+      "error",
+      7000
+    );
+    return null;
+  }
+}
+
 async function checkCachedUrlReport(urlId) {
   const apiKey = await getApiKey();
   if (!apiKey) return null;
 
-  const options = {
-    method: "GET",
-    headers: {
-      "accept": "application/json",
-      "x-apikey": apiKey
-    }
-  };
-
-  return fetch(`https://www.virustotal.com/api/v3/urls/${urlId}`, options)
-    .then(res => { return res.json() })
-    .then(data => {
-      console.log("Full JSON Output:\n" + JSON.stringify(data, null, 2));
-      return data;
-    })
-    .catch(err => console.error(err));
-}
-
-async function requestURL_Rescan(urlId) {
-  const apiKey = await getApiKey();
-  if (!apiKey) return null;
-
-  const options = {
-    method: 'POST',
-    headers: {
-      accept: 'application/json',
-      'x-apikey': apiKey
-    }
-  };
-
-  return fetch(`https://www.virustotal.com/api/v3/urls/${urlId}/analyse`, options)
-    .then(res => { return res.json() })
-    .then(data => {
-      console.log("Full JSON Output:\n" + JSON.stringify(data, null, 2));
-      return data;
-    })
-    .catch(err => console.error(err));
-}
-
-async function getRecentUrlReport(urlToFetch) {
-  const apiKey = await getApiKey();
-  if (!apiKey) return null;
-
-  // --- Polling Configuration ---
   const options = {
     method: "GET",
     headers: {
@@ -1196,35 +1259,47 @@ async function getRecentUrlReport(urlToFetch) {
     }
   };
 
-  // --- Polling Configuration ---
-  // Maximum number of times we will ask VirusTotal "is the scan done yet?"
-  // before giving up to prevent an infinite loop.
+  return await fetchVirusTotal(`https://www.virustotal.com/api/v3/urls/${urlId}`, options);
+}
+
+async function requestURL_Rescan(urlId) {
+  const apiKey = await getApiKey();
+  if (!apiKey) return null;
+
+  const options = {
+    method: "POST",
+    headers: {
+      accept: "application/json",
+      "x-apikey": apiKey
+    }
+  };
+
+  return await fetchVirusTotal(`https://www.virustotal.com/api/v3/urls/${urlId}/analyse`, options);
+}
+
+async function getRecentUrlReport(urlToFetch) {
+  const apiKey = await getApiKey();
+  if (!apiKey) return null;
+
+  const options = {
+    method: "GET",
+    headers: {
+      accept: "application/json",
+      "x-apikey": apiKey
+    }
+  };
+
   const MAX_ATTEMPTS = 10;
-
-  // How long to wait (in milliseconds) between each poll attempt.
-  // The free API allows 4 requests/minute. Since 2 calls are already spent before
-  // polling starts (cache check + rescan trigger), only 2 slots remain per minute.
-  // 20000ms = 20 seconds keeps us safely within that budget.
   const POLL_INTERVAL_MS = 20000;
-
-  // This helper wraps setTimeout in a Promise so we can use `await` to pause
-  // execution for POLL_INTERVAL_MS milliseconds before the next attempt.
-  // setTimeout on its own does not work with await, since it uses callbacks
-  // instead of Promises.
   const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-    // console.log(`Polling analysis status... (Attempt ${attempt}/${MAX_ATTEMPTS})`);
+    const data = await fetchVirusTotal(urlToFetch, options);
+    if (!data) return null;
 
-    const response = await fetch(urlToFetch, options);
-    const data = await response.json();
-
-    // data.attributes.status will be one of: "queued", "in-progress", or "completed"
     const status = data?.data?.attributes?.status;
-    // console.log(`Analysis status: ${status}`);
 
     if (status === "completed") {
-      // console.log("Analysis complete! Full JSON:\n" + JSON.stringify(data, null, 2));
       showToast(
         "Poll Complete",
         `Analysis completed after ${attempt} attempt(s).`,
@@ -1233,27 +1308,23 @@ async function getRecentUrlReport(urlToFetch) {
       return data;
     }
 
-    // If not completed and we still have attempts remaining, wait before retrying
     if (attempt < MAX_ATTEMPTS) {
-      // console.log(`Scan not ready yet. Waiting ${POLL_INTERVAL_MS / 1000}s before next check...`);
       showToast(
         "Poll Status",
         `(Attempt ${attempt}/${MAX_ATTEMPTS}) | Status: ${status} | Waiting ${POLL_INTERVAL_MS / 1000}s before next check...`,
         "info",
-        POLL_INTERVAL_MS // stays until the next poll, so user can see the status update
+        POLL_INTERVAL_MS
       );
       await wait(POLL_INTERVAL_MS);
     }
   }
 
-  // If we exit the loop without getting "completed", throw an error
-  // so the catch block in the button listener can handle it gracefully.
   showToast(
     "Scan Timeout",
     `VirusTotal scan did not complete after ${MAX_ATTEMPTS} attempts.`,
     "error"
   );
-  throw new Error(`VirusTotal scan did not complete after ${MAX_ATTEMPTS} attempts.`);
+  return null;
 }
 
 function updateScanResultsUI(statsData, urlId) { // Need to make changes here as well
