@@ -29,8 +29,28 @@ const btnToggleApiKey = document.getElementById("btn-toggle-api-key"); // Visibi
 // attribute. Radio buttons in the same group share the same name.
 const modeRadios = document.getElementsByName("contextMenuMode");
 
+// ── Theme management ────────────────────────────────────────────────
+async function loadTheme() {
+    try {
+        const { themeState } = await browser.storage.local.get("themeState");
+        const isDark = themeState?.isDarkMode ?? true;
+        document.body.classList.toggle("dark-mode", isDark);
+    } catch (err) {
+        console.error("[options] Failed to load theme:", err);
+    }
+}
+
+// Keep theme updated in real-time if changed in popup
+browser.storage.onChanged.addListener((changes, area) => {
+    if (area === "local" && changes.themeState) {
+        const isDark = changes.themeState.newValue?.isDarkMode ?? true;
+        document.body.classList.toggle("dark-mode", isDark);
+    }
+});
+
 // ── Load settings from storage and fill the form ────────────────────
 async function loadSettings() {
+    await loadTheme();
     try {
         // browser.storage.local.get() takes an array of keys (or a single
         // key string) and returns an object with those keys and their values.
@@ -91,16 +111,18 @@ btnSave.addEventListener("click", async () => {
 });
 
 btnToggleApiKey.addEventListener("click", () => {
-    const wrapper = btnToggleApiKey.parentElement;
+    const isPassword = apiKeyInput.type === "password";
+    apiKeyInput.type = isPassword ? "text" : "password";
 
-    if (apiKeyInput.type === "password") {
-        apiKeyInput.type = "text";
-        wrapper.classList.add("show-password");
-    } else {
-        apiKeyInput.type = "password";
-        wrapper.classList.remove("show-password");
+    const eyeIcon = btnToggleApiKey.querySelector(".icon-eye");
+    const eyeOffIcon = btnToggleApiKey.querySelector(".icon-eye-off");
+
+    if (eyeIcon && eyeOffIcon) {
+        eyeIcon.style.display = isPassword ? "none" : "";
+        eyeOffIcon.style.display = isPassword ? "" : "none";
     }
-})
+});
 
 // ── Init ────────────────────────────────────────────────────────────
 loadSettings();
+

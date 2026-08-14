@@ -56,6 +56,24 @@ pickerSearch.addEventListener("input", () => {
     });
 });
 
+// ── Theme management ────────────────────────────────────────────────
+async function applyTheme() {
+    try {
+        const { themeState } = await browser.storage.local.get("themeState");
+        const isDark = themeState?.isDarkMode ?? true;
+        document.body.classList.toggle("dark-mode", isDark);
+    } catch (err) {
+        console.error("[picker] Failed to apply theme:", err);
+    }
+}
+
+browser.storage.onChanged.addListener((changes, area) => {
+    if (area === "local" && changes.themeState) {
+        const isDark = changes.themeState.newValue?.isDarkMode ?? true;
+        document.body.classList.toggle("dark-mode", isDark);
+    }
+});
+
 // ── Load folders from storage and build the UI ──────────────────────
 async function loadFolders() {
     try {
@@ -80,7 +98,18 @@ async function loadFolders() {
             // It doesn't appear on the page until we append it to a parent.
             const btn = document.createElement("button");
             btn.className = "folder-pick-btn";
-            btn.textContent = folder.name;
+
+            const iconImg = document.createElement("img");
+            iconImg.src = "../icons/folder/tabler--folder-16.png";
+            iconImg.className = "folder-icon-img";
+            iconImg.alt = "";
+
+            const nameSpan = document.createElement("span");
+            nameSpan.textContent = folder.name;
+
+            btn.appendChild(iconImg);
+            btn.appendChild(nameSpan);
+
             // Store the folder ID on the button so we know which folder was picked.
             // dataset.folderId maps to the HTML attribute data-folder-id.
             btn.dataset.folderId = folder.id;
@@ -186,6 +215,7 @@ async function createNewFolderAndSave(folderName) {
 
 // ── Init ────────────────────────────────────────────────────────────
 async function init() {
+    await applyTheme();
     await loadFolders();
 
     // The background script can pass ?action=new_folder to tell the picker

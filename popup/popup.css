@@ -262,6 +262,7 @@ body {
         opacity: 0;
         transform: translateY(10px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -368,50 +369,49 @@ body {
     border-left-color: #6363ff;
 }
 
-.folder-item-icon {
+.folder-item-icon img {
     width: 16px;
     height: 16px;
+    display: block;
     flex-shrink: 0;
-    /* Icon should never shrink */
 }
 
-/* Folder name — truncates long names with "…"
-   white-space: nowrap  → prevents the text from wrapping to a new line
-   overflow: hidden     → hides any text that doesn't fit
-   text-overflow: ellipsis → shows "…" at the end of truncated text */
+.dark-mode .folder-item-icon img {
+    filter: invert(0.9);
+}
+
+/* Folder name — truncates long names with "…" */
 .folder-item-name {
     flex: 1;
-    /* Take up remaining space after icon */
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
-/* ── Folder delete button ──
-   A small red circle with an "×" inside.
-   Appears on the right side of each user-created folder. */
+/* ── Folder delete button ── */
 .folder-delete-btn {
-    width: 20px;
-    height: 20px;
+    width: 32px;
+    height: 32px;
     flex-shrink: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: #e74c3c;
-    color: #fff;
+    background: transparent;
     border: none;
     border-radius: 50%;
-    /* Makes it a circle */
-    font-size: 12px;
-    font-weight: 700;
-    line-height: 1;
     cursor: pointer;
-    /* opacity: 0 + the .folder-item:hover rule below means the delete
-     button only appears when you hover over the folder row. */
     opacity: 0;
-    transition:
-        opacity 0.15s ease,
-        background 0.15s ease;
+    transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.folder-delete-btn .folder-delete-icon {
+    width: 28px;
+    height: 28px;
+    display: block;
+}
+
+.dark-mode .folder-delete-icon {
+    filter: invert(0.9);
 }
 
 /* Show the delete button when hovering over the folder row */
@@ -420,8 +420,7 @@ body {
 }
 
 .folder-delete-btn:hover {
-    background: #c0392b;
-    /* Slightly darker red on hover */
+    transform: scale(1.1);
 }
 
 /* ── "New Folder" area at the bottom of the sidebar ── */
@@ -740,12 +739,28 @@ body {
     color: #fff;
 }
 
-.url-item.expanded .url-dropdown-icon {
-    transform: rotate(180deg);
+.url-dropdown-icon {
+    width: 15px;
+    height: 15px;
+    display: block;
+    transition: transform 0.2s ease;
 }
 
-.url-dropdown-icon {
-    transition: transform 0.2s ease;
+.url-rescan-icon {
+    width: 15px;
+    height: 15px;
+    display: block;
+}
+
+.dark-mode .url-rescan-icon,
+.dark-mode .url-dropdown-icon,
+.dark-mode .url-delete-icon,
+.dark-mode .vt-external-icon {
+    filter: invert(0.9);
+}
+
+.url-item.expanded .url-dropdown-icon {
+    transform: rotate(180deg);
 }
 
 /* Small delete "×" button */
@@ -758,12 +773,16 @@ body {
     justify-content: center;
     border: 1px solid transparent;
     border-radius: 50%;
-    font-size: 13px;
     background: transparent;
-    color: #888;
     cursor: pointer;
     opacity: 0.6;
-    transition: opacity 0.15s ease, color 0.15s ease, background 0.15s ease;
+    transition: opacity 0.15s ease, background 0.15s ease;
+}
+
+.url-delete-icon {
+    width: 16px;
+    height: 16px;
+    display: block;
 }
 
 .url-item:hover .url-delete-btn {
@@ -771,9 +790,7 @@ body {
 }
 
 .url-delete-btn:hover {
-    color: #fff;
-    background: #e74c3c;
-    border-color: #e74c3c;
+    background: rgba(231, 76, 60, 0.15);
 }
 
 /* Collapsible Details Panel (Dropdown) */

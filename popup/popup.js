@@ -372,11 +372,10 @@ function renderSidebar() {
       btn.classList.add("active");
     }
 
-    // ── Folder icon (small SVG) ──
-    // We set innerHTML for the icon because creating SVG elements
-    // programmatically is verbose. innerHTML parses an HTML string
-    // and creates the DOM nodes for us.
+    // ── Folder icon ──
     const iconSpan = document.createElement("span");
+    iconSpan.className = "folder-item-icon";
+    iconSpan.innerHTML = `<img src="../icons/folder/tabler--folder-16.png" alt="">`;
 
     // ── Folder name ──
     const nameSpan = document.createElement("span");
@@ -386,10 +385,10 @@ function renderSidebar() {
     // the full name when it's truncated with "…"
     nameSpan.title = folder.name;
 
-    // ── Delete button (red ✕ circle) ── // Could use an image instead to be more consistent with other icons
+    // ── Delete button ──
     const deleteBtn = document.createElement("button");
     deleteBtn.className = "folder-delete-btn";
-    deleteBtn.textContent = "✕";
+    deleteBtn.innerHTML = `<img src="../icons/delete/tabler--circle-x-filled-32.png" class="folder-delete-icon" alt="Delete">`;
     deleteBtn.title = "Delete folder";
 
     // e.stopPropagation() prevents the click from bubbling up to the
@@ -592,12 +591,7 @@ function renderUrlList() {
     const rescanBtn = document.createElement("button");
     rescanBtn.className = "url-rescan-btn";
     rescanBtn.title = "Re-scan URL";
-    rescanBtn.innerHTML = `
-      <svg class="url-rescan-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
-      </svg>
-    `;
-    // Need to replace with tabler--refresh icon
+    rescanBtn.innerHTML = `<img src="../icons/refresh/tabler--refresh-16.png" class="url-rescan-icon" alt="Re-scan">`;
 
     // Middle-Left: Last scan time text
     const lastScanTimeEl = document.createElement("span");
@@ -621,16 +615,12 @@ function renderUrlList() {
     const dropdownBtn = document.createElement("button");
     dropdownBtn.className = "url-dropdown-btn";
     dropdownBtn.title = "Toggle scan details";
-    dropdownBtn.innerHTML = `
-      <svg class="url-dropdown-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <polyline points="6 9 12 15 18 9"></polyline>
-      </svg>
-    `;
+    dropdownBtn.innerHTML = `<img src="../icons/chevron-down/tabler--chevron-down-16.png" class="url-dropdown-icon" alt="Toggle details">`;
 
     // Delete button
     const deleteBtn = document.createElement("button");
     deleteBtn.className = "url-delete-btn";
-    deleteBtn.textContent = "✕";
+    deleteBtn.innerHTML = `<img src="../icons/delete/tabler--circle-x-filled-32.png" class="url-delete-icon" alt="Remove URL">`;
     deleteBtn.title = "Remove URL";
     deleteBtn.addEventListener("click", (e) => {
       e.preventDefault();
@@ -756,10 +746,10 @@ async function scanAndPersistFolderUrl(urlLink, itemContainer) {
   if (entry.lastScanTime && getHoursAgo(Math.floor(entry.lastScanTime / 1000)) < 12) {
     // console.log(`Skipping scan for ${urlLink} as it was scanned less than 12 hours ago.`);
     showToast(
-          "Skipping Scan",
-          `${urlLink} was scanned less than 12 hours ago.`,
-          "info"
-        ); // The duration will be 6 seconds by default, so the user will see it briefly.
+      "Skipping Scan",
+      `${urlLink} was scanned less than 12 hours ago.`,
+      "info"
+    ); // The duration will be 6 seconds by default, so the user will see it briefly.
     return;
   }
 
@@ -1236,10 +1226,10 @@ async function getRecentUrlReport(urlToFetch) {
     if (status === "completed") {
       // console.log("Analysis complete! Full JSON:\n" + JSON.stringify(data, null, 2));
       showToast(
-            "Poll Complete",
-            `Analysis completed after ${attempt} attempt(s).`,
-            "info"
-          );
+        "Poll Complete",
+        `Analysis completed after ${attempt} attempt(s).`,
+        "info"
+      );
       return data;
     }
 
@@ -1247,11 +1237,11 @@ async function getRecentUrlReport(urlToFetch) {
     if (attempt < MAX_ATTEMPTS) {
       // console.log(`Scan not ready yet. Waiting ${POLL_INTERVAL_MS / 1000}s before next check...`);
       showToast(
-            "Poll Status",
-            `(Attempt ${attempt}/${MAX_ATTEMPTS}) | Status: ${status} | Waiting ${POLL_INTERVAL_MS / 1000}s before next check...`,
-            "info",
-            POLL_INTERVAL_MS // stays until the next poll, so user can see the status update
-          );
+        "Poll Status",
+        `(Attempt ${attempt}/${MAX_ATTEMPTS}) | Status: ${status} | Waiting ${POLL_INTERVAL_MS / 1000}s before next check...`,
+        "info",
+        POLL_INTERVAL_MS // stays until the next poll, so user can see the status update
+      );
       await wait(POLL_INTERVAL_MS);
     }
   }
@@ -1259,10 +1249,10 @@ async function getRecentUrlReport(urlToFetch) {
   // If we exit the loop without getting "completed", throw an error
   // so the catch block in the button listener can handle it gracefully.
   showToast(
-        "Scan Timeout",
-        `VirusTotal scan did not complete after ${MAX_ATTEMPTS} attempts.`,
-        "error"
-      );
+    "Scan Timeout",
+    `VirusTotal scan did not complete after ${MAX_ATTEMPTS} attempts.`,
+    "error"
+  );
   throw new Error(`VirusTotal scan did not complete after ${MAX_ATTEMPTS} attempts.`);
 }
 
@@ -1397,11 +1387,11 @@ btnSettings.addEventListener("click", () => {
 btnHelp.addEventListener("click", () => {
   // console.log("[popup] Help button clicked — no action defined yet.");
   showToast(
-   "No action defined",
-   `This button currently has no action defined. Check the extension's page in the extension store where you installed it for more information.`,
-   "info",
-   10000    
-);
+    "No action defined",
+    `This button currently has no action defined. Check the extension's page in the extension store where you installed it for more information.`,
+    "info",
+    10000
+  );
 });
 
 /* ==========================================================================
