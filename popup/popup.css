@@ -410,9 +410,7 @@ body {
     display: block;
 }
 
-.dark-mode .folder-delete-icon {
-    filter: invert(0.9);
-}
+/* folder-delete-icon retains original red icon styling in dark mode */
 
 /* Show the delete button when hovering over the folder row */
 .folder-item:hover .folder-delete-btn {
@@ -754,7 +752,6 @@ body {
 
 .dark-mode .url-rescan-icon,
 .dark-mode .url-dropdown-icon,
-.dark-mode .url-delete-icon,
 .dark-mode .vt-external-icon {
     filter: invert(0.9);
 }

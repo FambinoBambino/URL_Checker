@@ -364,18 +364,391 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return;
     }
 
-    // Example: the content script or popup can ask the background to do
-    // something by including an "action" property in the message.
     if (message.action === "getSettings") {
-        // Return a Promise — Firefox will wait for it to resolve and then
-        // send the resolved value back to the sender as the response.
         return browser.storage.local.get(["extensionEnabled", "folderData"]);
     }
 
-    // If you don't return anything (or return undefined/false), Firefox
-    // assumes you have nothing to reply with and the sender's promise
-    // will resolve to undefined.
+    if (message.action === "scanSingleUrl") {
+        enqueueScanTask({ type: "single", urlLink: message.urlLink, forceRescan: message.forceRescan });
+        sendResponse({ queued: true });
+        return;
+    }
+
+    if (message.action === "scanFolderUrl") {
+        enqueueScanTask({ type: "folder", urlLink: message.urlLink, folderId: message.folderId, forceRescan: message.forceRescan });
+        sendResponse({ queued: true });
+        return;
+    }
+
+    if (message.action === "scanFolderBatch") {
+        const urls = message.urls || [];
+        urls.forEach((urlLink) => {
+            enqueueScanTask({ type: "folder", urlLink, folderId: message.folderId, forceRescan: message.forceRescan });
+        });
+        sendResponse({ queued: true, count: urls.length });
+        return;
+    }
 });
+
+/* ==========================================================================
+   BACKGROUND SCANNING ENGINE & QUEUE PROCESSOR
+   ========================================================================== */
+
+/**
+ * Smart Notification Router:
+ * Sends an in-app toast to the popup if it is open and listening.
+ * If the popup is closed (or sendMessage fails), falls back to native desktop notifications.
+ */
+async function notifyUser(title, message, type = "info", duration = 6000, isScanning = false) {
+  await browser.storage.local.set({
+    activeScanStatus: {
+      isScanning,
+      title,
+      message,
+      type,
+      duration,
+      updatedAt: Date.now()
+    }
+  });
+
+  try {
+    const response = await browser.runtime.sendMessage({
+      action: "showToast",
+      title,
+      message,
+      type,
+      duration
+    });
+    if (response && response.received) return;
+  } catch (err) {
+    if (browser.notifications) {
+      try {
+        await browser.notifications.create({
+          type: "basic",
+          iconUrl: browser.runtime.getURL("icons/extension-icon/tabler--virus-search-48-green.png"),
+          title: `${title} - URL Checker`,
+          message: message.replace(/<[^>]*>?/gm, "")
+        });
+      } catch (notifErr) {
+        console.warn("[background] Desktop notification error:", notifErr);
+      }
+    }
+  }
+}
+
+async function getApiKey() {
+  const apiKey = (await browser.storage.local.get("virusTotalApiKey")).virusTotalApiKey ?? "";
+  if (!apiKey) {
+    notifyUser(
+      "No API Key Set",
+      "A VirusTotal API key is required to scan URLs. Open Settings to add your key.",
+      "error",
+      0,
+      false
+    );
+    return null;
+  }
+  return apiKey;
+}
+
+function getBase64CachedUrlId(url) {
+  const utf8Bytes = new TextEncoder().encode(url);
+  const binaryString = Array.from(utf8Bytes, (byte) => String.fromCharCode(byte)).join("");
+  const base64 = btoa(binaryString);
+  return base64
+    .replace(/=/g, "")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_");
+}
+
+function getHoursAgo(unixTimestamp) {
+  const currentSeconds = Math.floor(Date.now() / 1000);
+  const difference = currentSeconds - unixTimestamp;
+  return Math.floor(difference / 3600);
+}
+
+async function fetchVirusTotal(url, options) {
+  try {
+    const response = await fetch(url, options);
+
+    if (response.status === 429) {
+      notifyUser(
+        "Rate Limit Exceeded",
+        "VirusTotal free API rate limit reached (4 requests/min max). Please wait a minute before retrying.",
+        "warning",
+        8000,
+        false
+      );
+      return null;
+    }
+
+    if (response.status === 401 || response.status === 403) {
+      notifyUser(
+        "Invalid API Key",
+        "Your VirusTotal API key was rejected. Please check your key in Settings.",
+        "error",
+        0,
+        false
+      );
+      return null;
+    }
+
+    if (response.status === 404) {
+      return { notFound: true };
+    }
+
+    if (!response.ok) {
+      notifyUser(
+        "VirusTotal Service Error",
+        `VirusTotal servers returned HTTP status ${response.status}. Please try again later.`,
+        "error",
+        7000,
+        false
+      );
+      return null;
+    }
+
+    return await response.json();
+  } catch (err) {
+    console.error("[background] VirusTotal API Fetch Error:", err);
+    notifyUser(
+      "Network Error",
+      "Unable to connect to VirusTotal. Please check your internet connection.",
+      "error",
+      7000,
+      false
+    );
+    return null;
+  }
+}
+
+async function checkCachedUrlReport(urlId) {
+  const apiKey = await getApiKey();
+  if (!apiKey) return null;
+
+  const options = {
+    method: "GET",
+    headers: {
+      accept: "application/json",
+      "x-apikey": apiKey
+    }
+  };
+
+  return await fetchVirusTotal(`https://www.virustotal.com/api/v3/urls/${urlId}`, options);
+}
+
+async function submitNewUrlScan(urlLink) {
+  const apiKey = await getApiKey();
+  if (!apiKey) return null;
+
+  const options = {
+    method: "POST",
+    headers: {
+      accept: "application/json",
+      "content-type": "application/x-www-form-urlencoded",
+      "x-apikey": apiKey
+    },
+    body: `url=${encodeURIComponent(urlLink)}`
+  };
+
+  return await fetchVirusTotal(`https://www.virustotal.com/api/v3/urls`, options);
+}
+
+async function requestURL_Rescan(urlId) {
+  const apiKey = await getApiKey();
+  if (!apiKey) return null;
+
+  const options = {
+    method: "POST",
+    headers: {
+      accept: "application/json",
+      "x-apikey": apiKey
+    }
+  };
+
+  return await fetchVirusTotal(`https://www.virustotal.com/api/v3/urls/${urlId}/analyse`, options);
+}
+
+async function getRecentUrlReport(urlToFetch) {
+  const apiKey = await getApiKey();
+  if (!apiKey) return null;
+
+  const options = {
+    method: "GET",
+    headers: {
+      accept: "application/json",
+      "x-apikey": apiKey
+    }
+  };
+
+  const MAX_ATTEMPTS = 10;
+  const POLL_INTERVAL_MS = 20000;
+  const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    const data = await fetchVirusTotal(urlToFetch, options);
+    if (!data) return null;
+
+    const status = data?.data?.attributes?.status;
+
+    if (status === "completed") {
+      return data;
+    }
+
+    if (attempt < MAX_ATTEMPTS) {
+      notifyUser(
+        "Poll Status",
+        `(Attempt ${attempt}/${MAX_ATTEMPTS}) | Status: ${status} | Waiting ${POLL_INTERVAL_MS / 1000}s before next check...`,
+        "info",
+        POLL_INTERVAL_MS,
+        true
+      );
+      await wait(POLL_INTERVAL_MS);
+    }
+  }
+
+  notifyUser(
+    "Scan Timeout",
+    `VirusTotal scan did not complete after ${MAX_ATTEMPTS} attempts.`,
+    "error",
+    6000,
+    false
+  );
+  return null;
+}
+
+// ── FIFO Scan Queue ──────────────────────────────────────────────────
+const scanQueue = [];
+let isProcessingQueue = false;
+
+function enqueueScanTask(task) {
+  scanQueue.push(task);
+  processScanQueue();
+}
+
+async function processScanQueue() {
+  if (isProcessingQueue) return;
+  isProcessingQueue = true;
+
+  while (scanQueue.length > 0) {
+    const currentTask = scanQueue.shift();
+    try {
+      if (currentTask.type === "single") {
+        await executeSingleScan(currentTask.urlLink, currentTask.forceRescan);
+      } else if (currentTask.type === "folder") {
+        await executeFolderScan(currentTask.urlLink, currentTask.folderId, currentTask.forceRescan);
+      }
+    } catch (err) {
+      console.error("[background] Error executing scan task:", err);
+    }
+  }
+
+  isProcessingQueue = false;
+}
+
+async function executeSingleScan(urlLink, forceRescan = false) {
+  notifyUser("Scan Started", `Scanning ${urlLink} in background...`, "info", 4000, true);
+
+  const urlId = getBase64CachedUrlId(urlLink);
+  const latestAnalysisJSON = await checkCachedUrlReport(urlId);
+  if (!latestAnalysisJSON) return;
+
+  let statsData;
+
+  if (latestAnalysisJSON.notFound) {
+    let requestJSON = await submitNewUrlScan(urlLink);
+    if (!requestJSON || !requestJSON.data?.links?.self) {
+      requestJSON = await requestURL_Rescan(urlId);
+    }
+    if (!requestJSON || !requestJSON.data?.links?.self) return;
+    const tempJSON = await getRecentUrlReport(requestJSON.data.links.self);
+    if (!tempJSON || !tempJSON.data?.attributes?.stats) return;
+    statsData = tempJSON.data.attributes.stats;
+  } else if (!forceRescan && latestAnalysisJSON.data?.attributes?.last_analysis_date && getHoursAgo(latestAnalysisJSON.data.attributes.last_analysis_date) < 12) {
+    statsData = latestAnalysisJSON.data.attributes.last_analysis_stats;
+    notifyUser("Recent Cache Loaded", `Using report from <12h ago for ${urlLink}`, "info", 5000, false);
+  } else {
+    const requestJSON = await requestURL_Rescan(urlId);
+    if (!requestJSON || !requestJSON.data?.links?.self) return;
+    const tempJSON = await getRecentUrlReport(requestJSON.data.links.self);
+    if (!tempJSON || !tempJSON.data?.attributes?.stats) return;
+    statsData = tempJSON.data.attributes.stats;
+  }
+
+  if (!statsData) return;
+
+  const resultObj = {
+    urlLink,
+    urlId,
+    statsData,
+    scannedAt: Date.now()
+  };
+
+  await browser.storage.local.set({ latestSingleScanResult: resultObj });
+  notifyUser(
+    "Scan Complete",
+    `Finished scanning ${urlLink}. Malicious: ${statsData.malicious}, Suspicious: ${statsData.suspicious}`,
+    statsData.malicious > 0 ? "error" : statsData.suspicious > 0 ? "warning" : "info",
+    8000,
+    false
+  );
+}
+
+async function executeFolderScan(urlLink, folderId, forceRescan = false) {
+  notifyUser("Scan Started", `Scanning ${urlLink} in background...`, "info", 4000, true);
+
+  const { folderData } = await browser.storage.local.get("folderData");
+  const folders = folderData?.folders || [];
+  const folder = folders.find((f) => f.id === folderId);
+  if (!folder) return;
+
+  const entry = folder.urls.find((e) => e.link === urlLink);
+  if (!entry) return;
+
+  if (!forceRescan && entry.lastScanTime && getHoursAgo(Math.floor(entry.lastScanTime / 1000)) < 12) {
+    notifyUser("Skipping Scan", `${urlLink} was scanned less than 12 hours ago.`, "info", 6000, false);
+    return;
+  }
+
+  const urlId = getBase64CachedUrlId(urlLink);
+  const latestAnalysisJSON = await checkCachedUrlReport(urlId);
+  if (!latestAnalysisJSON) return;
+
+  let statsData;
+
+  if (latestAnalysisJSON.notFound) {
+    let requestJSON = await submitNewUrlScan(urlLink);
+    if (!requestJSON || !requestJSON.data?.links?.self) {
+      requestJSON = await requestURL_Rescan(urlId);
+    }
+    if (!requestJSON || !requestJSON.data?.links?.self) return;
+    const tempJSON = await getRecentUrlReport(requestJSON.data.links.self);
+    if (!tempJSON || !tempJSON.data?.attributes?.stats) return;
+    statsData = tempJSON.data.attributes.stats;
+  } else if (!forceRescan && latestAnalysisJSON.data?.attributes?.last_analysis_date && getHoursAgo(latestAnalysisJSON.data.attributes.last_analysis_date) < 12) {
+    statsData = latestAnalysisJSON.data.attributes.last_analysis_stats;
+  } else {
+    const requestJSON = await requestURL_Rescan(urlId);
+    if (!requestJSON || !requestJSON.data?.links?.self) return;
+    const tempJSON = await getRecentUrlReport(requestJSON.data.links.self);
+    if (!tempJSON || !tempJSON.data?.attributes?.stats) return;
+    statsData = tempJSON.data.attributes.stats;
+  }
+
+  if (!statsData) return;
+
+  entry.statsData = statsData;
+  entry.lastScanTime = Date.now();
+  await browser.storage.local.set({ folderData });
+
+  notifyUser(
+    "Scan Complete",
+    `Finished scanning ${urlLink}. Malicious: ${statsData.malicious}, Suspicious: ${statsData.suspicious}`,
+    statsData.malicious > 0 ? "error" : statsData.suspicious > 0 ? "warning" : "info",
+    8000,
+    false
+  );
+}
 
 // ── Storage change listener ─────────────────────────────────────────
 // Rebuild context menus when folder data changes (e.g., user creates or

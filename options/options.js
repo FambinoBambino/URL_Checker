@@ -33,7 +33,7 @@ const modeRadios = document.getElementsByName("contextMenuMode");
 async function loadTheme() {
     try {
         const { themeState } = await browser.storage.local.get("themeState");
-        const isDark = themeState?.isDarkMode ?? true;
+        const isDark = themeState?.isDarkMode ?? false;
         document.body.classList.toggle("dark-mode", isDark);
     } catch (err) {
         console.error("[options] Failed to load theme:", err);
@@ -43,7 +43,7 @@ async function loadTheme() {
 // Keep theme updated in real-time if changed in popup
 browser.storage.onChanged.addListener((changes, area) => {
     if (area === "local" && changes.themeState) {
-        const isDark = changes.themeState.newValue?.isDarkMode ?? true;
+        const isDark = changes.themeState.newValue?.isDarkMode ?? false;
         document.body.classList.toggle("dark-mode", isDark);
     }
 });

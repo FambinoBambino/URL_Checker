@@ -127,6 +127,15 @@ function showToast(title, message, type = "error", duration = 6000) {
   }
 }
 
+// Listen for background toast messages
+browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.action === "showToast") {
+    showToast(message.title, message.message, message.type, message.duration);
+    sendResponse({ received: true });
+    return true;
+  }
+});
+
 /* ==========================================================================
    API KEY GUARD
    getApiKey() reads the stored VirusTotal API key.
@@ -185,6 +194,22 @@ async function init() {
   setupFilterTabListeners();
   renderSidebar();
   renderUrlList();
+
+  const { latestSingleScanResult } = await browser.storage.local.get("latestSingleScanResult");
+  if (latestSingleScanResult) {
+    urlInput.value = latestSingleScanResult.urlLink || "";
+    updateScanResultsUI(latestSingleScanResult.statsData, latestSingleScanResult.urlId);
+  }
+
+  const { activeScanStatus } = await browser.storage.local.get("activeScanStatus");
+  if (activeScanStatus && activeScanStatus.isScanning) {
+    showToast(
+      activeScanStatus.title || "Scan in Progress",
+      activeScanStatus.message || "A scan is currently processing in the background...",
+      activeScanStatus.type || "info",
+      activeScanStatus.duration || 6000
+    );
+  }
 }
 
 /**
@@ -629,6 +654,26 @@ function renderUrlList() {
     linkEl.rel = "noopener noreferrer";
     linkEl.title = urlLink;
 
+    // Warn the user before opening suspicious or malicious links
+    const stats = urlEntry.statsData;
+    const isMalicious = stats && stats.malicious > 0;
+    const isSuspicious = stats && !isMalicious && stats.suspicious > 0;
+    if (isMalicious || isSuspicious) {
+      const level = isMalicious ? "MALICIOUS" : "SUSPICIOUS";
+      const detail = isMalicious
+        ? `${stats.malicious} engine(s) flagged it as malicious.`
+        : `${stats.suspicious} engine(s) flagged it as suspicious.`;
+      linkEl.addEventListener("click", (e) => {
+        e.preventDefault();
+        const confirmed = window.confirm(
+          `⚠️ Warning: This URL has a ${level} verdict.\n${detail}\n\nAre you sure you want to open it?`
+        );
+        if (confirmed) {
+          window.open(urlLink, "_blank", "noopener,noreferrer");
+        }
+      });
+    }
+
     // Far Right: Action buttons group
     const actionsGroup = document.createElement("div");
     actionsGroup.className = "url-actions";
@@ -757,54 +802,24 @@ function formatTimeAgo(timestampMs) {
  * @param {string} urlLink - The URL string to analyze
  * @param {HTMLElement} itemContainer - The .url-item DOM container box
  */
-async function scanAndPersistFolderUrl(urlLink, itemContainer) {
+async function scanAndPersistFolderUrl(urlLink, itemContainer, forceRescan = false) {
   const folder = folderData.folders.find((f) => f.id === activeFolderId);
   if (!folder) return;
 
   const entry = folder.urls.find((e) => e.link === urlLink);
   if (!entry) return;
 
-  // If scanned within the last 12 hours, skip new VirusTotal API requests
-  if (entry.lastScanTime && getHoursAgo(Math.floor(entry.lastScanTime / 1000)) < 12) {
-    showToast(
-      "Skipping Scan",
-      `${urlLink} was scanned less than 12 hours ago.`,
-      "info"
-    );
+  if (!forceRescan && entry.lastScanTime && getHoursAgo(Math.floor(entry.lastScanTime / 1000)) < 12) {
+    showToast("Skipping Scan", `${urlLink} was scanned less than 12 hours ago.`, "info");
     return;
   }
 
-  const urlId = getBase64CachedUrlId(urlLink);
-  const latestAnalysisJSON = await checkCachedUrlReport(urlId);
-  if (!latestAnalysisJSON) return; // Error toast already shown
-
-  let statsData;
-
-  if (latestAnalysisJSON.notFound) {
-    const requestJSON = await requestURL_Rescan(urlId);
-    if (!requestJSON || !requestJSON.data?.links?.self) return;
-    const tempJSON = await getRecentUrlReport(requestJSON.data.links.self);
-    if (!tempJSON || !tempJSON.data?.attributes?.stats) return;
-    statsData = tempJSON.data.attributes.stats;
-  } else if (latestAnalysisJSON.data?.attributes?.last_analysis_date && getHoursAgo(latestAnalysisJSON.data.attributes.last_analysis_date) < 12) {
-    statsData = latestAnalysisJSON.data.attributes.last_analysis_stats;
-  } else {
-    const requestJSON = await requestURL_Rescan(urlId);
-    if (!requestJSON || !requestJSON.data?.links?.self) return;
-    const tempJSON = await getRecentUrlReport(requestJSON.data.links.self);
-    if (!tempJSON || !tempJSON.data?.attributes?.stats) return;
-    statsData = tempJSON.data.attributes.stats;
-  }
-
-  if (!statsData) return;
-
-  // Update in-memory entry and persist to storage
-  entry.statsData = statsData;
-  entry.lastScanTime = Date.now();
-  await saveFolderData();
-
-  // Update UI with new stats and scan time
-  updateFolderUrlItemUI(itemContainer, statsData, urlId, entry.lastScanTime);
+  await browser.runtime.sendMessage({
+    action: "scanFolderUrl",
+    urlLink: urlLink,
+    folderId: activeFolderId,
+    forceRescan: forceRescan
+  });
 }
 
 /**
@@ -1081,34 +1096,12 @@ btnURL_Check.addEventListener("click", async () => {
       showToast("Input Required", "Please enter a valid URL to check.", "warning", 4000);
       return;
     }
-    const urlId = getBase64CachedUrlId(urlToCheck);
-
-    const latestAnalysisJSON = await checkCachedUrlReport(urlId);
-    if (!latestAnalysisJSON) return; // Error toast already shown
-
-    if (latestAnalysisJSON.notFound) {
-      console.log("URL not in VirusTotal cache. Requesting fresh analysis...");
-      const requestJSON = await requestURL_Rescan(urlId);
-      if (!requestJSON || !requestJSON.data?.links?.self) return;
-      const recentJSON = await getRecentUrlReport(requestJSON.data.links.self);
-      if (!recentJSON || !recentJSON.data?.attributes?.stats) return;
-      updateScanResultsUI(recentJSON.data.attributes.stats, urlId);
-      return;
-    }
-
-    if (latestAnalysisJSON.data?.attributes?.last_analysis_date && getHoursAgo(latestAnalysisJSON.data.attributes.last_analysis_date) < 12) {
-      console.log(`The cached report is recent (less than 12 hours old).`);
-      updateScanResultsUI(latestAnalysisJSON.data.attributes.last_analysis_stats, urlId);
-    } else {
-      console.log(`The cached report is older than 12 hours. Requesting rescan...`);
-      const requestJSON = await requestURL_Rescan(urlId);
-      if (!requestJSON || !requestJSON.data?.links?.self) return;
-      const recentJSON = await getRecentUrlReport(requestJSON.data.links.self);
-      if (!recentJSON || !recentJSON.data?.attributes?.stats) return;
-      updateScanResultsUI(recentJSON.data.attributes.stats, urlId);
-    }
+    await browser.runtime.sendMessage({
+      action: "scanSingleUrl",
+      urlLink: urlToCheck
+    });
   } catch (err) {
-    console.error("Failed to fetch report:", err);
+    console.error("Failed to trigger background scan:", err);
   }
 });
 
@@ -1480,14 +1473,17 @@ btnHelp.addEventListener("click", () => {
      areaName  — which storage area changed ("local", "sync", or "managed")
    ========================================================================== */
 browser.storage.onChanged.addListener((changes, areaName) => {
-  // We only care about changes to "folderData" in the "local" area
-  if (areaName === "local" && changes.folderData) {
-    // Update our in-memory data with the new value from storage.
-    // changes.folderData.newValue contains the updated folderData object.
+  if (areaName !== "local") return;
+
+  if (changes.folderData) {
     folderData = changes.folderData.newValue || { folders: [] };
     renderSidebar();
     renderUrlList();
-    // console.log("[popup] Folder data updated from storage change.");
+  }
+
+  if (changes.latestSingleScanResult && changes.latestSingleScanResult.newValue) {
+    const res = changes.latestSingleScanResult.newValue;
+    updateScanResultsUI(res.statsData, res.urlId);
   }
 });
 

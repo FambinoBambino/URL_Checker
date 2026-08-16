@@ -10,22 +10,15 @@
     "48": "icons/extension-icon/tabler--virus-search-48-green.png",
     "128": "icons/extension-icon/tabler--virus-search-128-green.png"
   },
-  "permissions": ["storage", "menus"],
+  "permissions": ["storage", "menus", "notifications"],
   "host_permissions": [
     "https://www.virustotal.com/*"
-  ],
-  "optional_permissions": [
-    "activeTab",
-    "bookmarks",
-    "clipboardRead",
-    "clipboardWrite",
-    "tabGroups"
   ],
   "action": {
     "default_popup": "popup/popup.html",
     "default_title": "URL Checker"
   },
-    "background": {
+  "background": {
     "scripts": [
       "background/background.js"
     ],
