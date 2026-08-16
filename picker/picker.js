@@ -151,9 +151,8 @@ async function saveUrlToFolder(folderId) {
 
             // Write the updated folderData back to storage.
             await browser.storage.local.set({ folderData });
-            // console.log("[picker] URL saved to folder:", folder.name);
         } else {
-            // console.log("[picker] URL already exists in folder:", folder.name);
+            console.log("[picker] URL already exists in folder:", folder.name);
         }
 
         // Close this popup window.
@@ -205,11 +204,9 @@ async function createNewFolderAndSave(folderName) {
         data.folders.push(newFolder);
         await browser.storage.local.set({ folderData: data });
 
-        // console.log(`[picker] Created new folder '${folderName}' and saved URL.`);
         window.close();
     } catch (err) {
         console.error("[picker] Failed to create folder:", err);
-        alert("An error occurred while creating the folder.");
     }
 }
 

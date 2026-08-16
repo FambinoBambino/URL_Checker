@@ -376,10 +376,6 @@ body {
     flex-shrink: 0;
 }
 
-.dark-mode .folder-item-icon img {
-    filter: invert(0.9);
-}
-
 /* Folder name — truncates long names with "…" */
 .folder-item-name {
     flex: 1;

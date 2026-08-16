@@ -271,31 +271,15 @@ async function saveFolderData() {
   }
 }
 
-// async function persistScanDataForUrl(link, scanData) { // Need to update here to save only the stats of the JSOn and then date.now() for time of scan.
-//   const folder = folderData.folders.find((f) => f.id === activeFolderId);
-//   if (!folder) return;
-
-//   const entry = folder.urls.find((e) => e.link === link);
-//   if (entry) {
-//     entry.scanData = scanData;
-//     await saveFolderData();
-//   }
-// }
-
 async function persistStatsDataForUrl(link, statsData) {
   const folder = folderData.folders.find((f) => f.id === activeFolderId);
   if (!folder) return;
 
   const entry = folder.urls.find((e) => e.link === link);
   if (entry) {
-    // entry.scanData = scanData;
     entry.statsData = statsData;
-    // console.log(`Persisting stats data for ${link}:`, entry.statsData);
     entry.lastScanTime = Date.now(); // Store the current timestamp
-    // console.log(`Persisting last scan time for ${link}:`, entry.lastScanTime);
     await saveFolderData();
-    // console.log(`Persisting stats data for ${link}:`, entry.statsData);
-    // console.log(`Persisting last scan time for ${link}:`, entry.lastScanTime);
   }
 }
 
@@ -1077,7 +1061,6 @@ tabButtons.forEach((btn) => {
 // The folder is actually CREATED when the user presses Enter in the input.
 btnNewFolder.addEventListener("click", () => {
   // Toggle the hidden class on the input to show/hide it
-  // console.log("btnNewFolder clicked");
   newFolderInput.classList.toggle("hidden");
 
   // If the input is now visible, focus it so the user can start typing
@@ -1141,7 +1124,6 @@ function getLocalTime(unixTimestamp) {
   // 3. Format as a readable local date and time string
   const localTimeString = dateObject.toLocaleString();
 
-  // console.log(localTimeString); 
   return localTimeString;
   // Output on your device (e.g.): "7/26/2026, 6:45:31 PM" (in your local timezone)
 
@@ -1153,22 +1135,12 @@ function getSecondsAgo(unixTimestamp) {
   // const ms = Date.now() - unixTimestamp;
   const currentSeconds = Math.floor(Date.now() / 1000);
   const difference = currentSeconds - unixTimestamp;
-
-  // console.log(`Difference in seconds: ${difference}`);
-  // console.log(`Difference in minutes: ${Math.floor(difference / 60)}`);
-  // console.log(`Difference in hours: ${Math.floor(difference / 3600)}`);
-  // console.log(`Difference in days: ${Math.floor(difference / 86400)}`);
 }
 
 function getHoursAgo(unixTimestamp) {
   const currentSeconds = Math.floor(Date.now() / 1000);
   const difference = currentSeconds - unixTimestamp;
 
-  // console.log(`Current Unix timestamp: ${currentSeconds}`);
-  // console.log(`Last analysis Unix timestamp: ${unixTimestamp}`);
-  // console.log(`Difference in seconds: ${difference}`);
-  // console.log(`Difference in minutes: ${Math.floor(difference / 60)}`);
-  // console.log(`Difference in hours: ${Math.floor(difference / 3600)}`);
   return Math.floor(difference / 3600);
 }
 
@@ -1324,7 +1296,6 @@ function updateScanResultsUI(statsData, urlId) { // Need to make changes here as
   // URL Object uses `last_analysis_stats`, Analysis Object uses `stats`.
   // Extract whichever one exists into a single `stats` variable.
   // const stats = JSON.data.attributes.last_analysis_stats ?? JSON.data.attributes.stats;
-  // console.log("Returned stats JSON:", statsData);
 
   // Now all field accesses are clean and identical regardless of source
   const maliciousCount = statsData.malicious;
@@ -1449,7 +1420,6 @@ btnSettings.addEventListener("click", () => {
 
 // ── Help button — placeholder ───────────────────────────────────────
 btnHelp.addEventListener("click", () => {
-  // console.log("[popup] Help button clicked — no action defined yet.");
   showToast(
     "No action defined",
     `This button currently has no action defined. Check the extension's page in the extension store where you installed it for more information.`,

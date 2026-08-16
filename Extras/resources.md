@@ -8,4 +8,8 @@ Basically a gathering of all the resources I've used:
 
 - icons: https://iconify.design/
 
--
+- https://docs.virustotal.com/ 
+
+- https://antigravity.google/ 
+
+
