@@ -197,7 +197,6 @@ async function createNewFolderAndSave(folderName) {
             id: "f-" + Date.now(),
             name: folderName,
             // Pre-seed this folder's URL list with the current URL
-            // urls: [{ link: urlToSave, scanData: null }]
             urls: [{ link: urlToSave, statsData: null, lastScanTime: null }]
         };
 

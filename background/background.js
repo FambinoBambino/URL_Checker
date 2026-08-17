@@ -30,30 +30,42 @@ const menusAPI = browser.menus || browser.contextMenus;
 // Fires when the extension is first installed, updated to a new version,
 // or when Firefox itself is updated.
 // Common uses: set default settings, show a welcome page, migrate data.
-browser.runtime.onInstalled.addListener((details) => {
+browser.runtime.onInstalled.addListener(async (details) => {
     // "details.reason" tells you WHY this event fired:
     //   "install"  → first time the user installed the extension
     //   "update"   → the extension was updated to a new version
     //   "browser_update" → Firefox itself was updated
 
     if (details.reason === "install") {
-        // Set default preferences in storage.
-        // browser.storage.local.set() takes an object of key-value pairs.
-        browser.storage.local.set({
-            extensionEnabled: true,
-            // folderData holds all user-created folders and their URLs.
-            // The "General" folder isn't stored — it's computed on the fly as
-            // a union (combination) of all folders' URLs.
-            folderData: {
-                folders: [],
-            },
+        const existing = await browser.storage.local.get([
+            "extensionEnabled",
+            "folderData",
+            "contextMenuMode"
+        ]);
+
+        const defaults = {};
+
+        if (existing.extensionEnabled === undefined) {
+            defaults.extensionEnabled = true;
+        }
+
+        if (existing.folderData === undefined) {
+            defaults.folderData = {
+                folders: []
+            };
+        }
+
+        if (existing.contextMenuMode === undefined) {
             // contextMenuMode controls how the right-click menu works:
             //   "simple"  → one menu item, opens the picker popup
             //   "submenu" → parent item that expands into child items for quick selection
-            contextMenuMode: "simple"
-        });
-    }
+            defaults.contextMenuMode = "simple";
+        }
 
+        if (Object.keys(defaults).length > 0) {
+            await browser.storage.local.set(defaults);
+        }
+    }
     // Build the context menus after install/update
     buildContextMenu();
 });
@@ -119,17 +131,7 @@ async function buildContextMenu() {
             contexts: ["page", "link"],
         });
 
-        // 2. Create the "General" child item (always first).
-        //    parentId links it under the parent item we just created.
-        //    In sub-menus, items appear in the ORDER they are created.
-        // menusAPI.create({
-        //     id: "save-to-general",
-        //     parentId: "save-url-parent",
-        //     title: "📥 General",
-        //     contexts: ["page", "link"],
-        // });
-
-        // 3. Create child items for up to 8 user-created folders.
+        // 2. Create child items for up to 8 user-created folders.
         //    Array.slice(0, 8) returns a new array with at most the first 8 elements.
         //    This keeps the submenu compact even if the user has dozens of folders.
         const displayedFolders = folders.slice(0, 8);
@@ -143,7 +145,7 @@ async function buildContextMenu() {
             });
         });
 
-        // 4. "Create New Folder..." — opens the picker popup and immediately prompts
+        // 3. "Create New Folder..." — opens the picker popup and immediately prompts
         menusAPI.create({
             id: "save-url-new-folder",
             parentId: "save-url-parent",
@@ -151,7 +153,7 @@ async function buildContextMenu() {
             contexts: ["page", "link"],
         });
 
-        // 5. Add a separator before "Search for folder…"
+        // 4. Add a separator before "Search for folder…"
         //    type: "separator" draws a horizontal line in the menu.
         menusAPI.create({
             id: "save-url-separator",
@@ -304,7 +306,6 @@ async function saveUrlToFolder(folderId, url) {
 
         // Don't add duplicates
         if (!folder.urls.some((entry) => entry.link === url)) {
-            // folder.urls.push({ link: url, scanData: null });
             folder.urls.push({ link: url, statsData: null, lastScanTime: null });
             await browser.storage.local.set({ folderData });
         } else {
