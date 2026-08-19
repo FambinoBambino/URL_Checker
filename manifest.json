@@ -3,7 +3,7 @@
   "name": "URL Checker",
   "description": "This addon allows users to check URLs / sites using VirusTotal. This ranges from being able to right-click on a link or page and checking for VT results to storing links within a folder, so that you can easily re-scan common links as often as you need and with ease of location and automation. A VirusTotal API key is not needed, but can be used.",
   "version": "1.0.0",
-  "author": "Kakania Vingler",
+  "author": "FambinoBambino",
   "icons": {
     "16": "icons/extension-icon/tabler--virus-search-16-green.png",
     "32": "icons/extension-icon/tabler--virus-search-32-green.png",
