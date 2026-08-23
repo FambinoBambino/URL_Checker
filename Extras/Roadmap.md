@@ -1,1 +1,1 @@
-I'll probably add things I plan to improve / add / fix here.
+I'll probably add things I plan to improve / add / fix here. For now, take a look at my white board pictures in the proofOfIdea folder and there will be some future version ideas.
